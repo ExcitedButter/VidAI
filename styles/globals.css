@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+::selection {
+  background: #fc8bab;
+}
+
+/* Hide Next.js development indicators (Turbopack, Preferences panel) */
+#__next-dev-overlay,
+#__next-dev-indicator,
+[data-nextjs-dev-indicator],
+[data-nextjs-turbopack-indicator] {
+  display: none !important;
+}
