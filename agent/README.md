@@ -39,12 +39,13 @@ SCRIPT_GENERATING → SCRIPT_QC → SCRIPT_READY → SHOT_PLANNING → VIDEO_GEN
 | §7 Script Strategy Router | 6 archetypes, LLM pick with rule-table fallback | `stages/strategy.py::ScriptRouterStage` |
 | §8 Script Generation | Strategy → Beats → Speech + Visual beats | `stages/script.py::BeatPlannerStage/CopywriterStage` |
 | §9 Script QC | rule checks (durationFit, beatLength, productTiming) + 8 LLM checks; Rewrite Agent fixes only failed beats, max `maxScriptRepairs` | `stages/script.py::ScriptQCStage` |
-| §10–11 Character Casting | curated library (`vidai/data/character_library.json`) scored on relatable/aspirational/distinctive weights derived from angle + category; LLM `whyThisPerson`; Character Brief → generated character when no match / `--new-character` | `stages/character.py` |
-| §13 Shot Planning | hard constraints: never cut inside a beat, ≤ `maxShotSec`, cut on visual-type / product change; LLM writes per-shot prompts starting with the continuity anchors | `stages/shots.py` |
-| §14 Video Generation | Seedance (seevio.ai or Volcano Ark) per shot, first frame = character reference when available, network backoff | `stages/video.py::VideoStage`, `seedance.py` |
-| §15 Video QC + Repair | ffprobe timing + VLM judge per clip (identity / product / continuity / defects / speech); soft_fail → retry → simplify_action → change_framing; hard_fail → FAILED | `stages/video.py` |
+| §10–11 Character Casting | curated + personal library (`vidai/data/character_library.json`, `data/personal_library.json`) scored on relatable/aspirational/distinctive weights derived from angle + category, matching input includes Product Interaction Needs; LLM `whyThisPerson`; Character Brief → generated character when no match / `--new-character`; `save-character` = "Save to Library" | `stages/character.py` |
+| §13 Shot Planning | agent proposes the grouping + prompts, rules validate (never cut inside a beat, ≤ `maxShotSec`, ≥ model minimum, product moments kept) and fall back to rule segmentation | `stages/shots.py` |
+| §14 Video Generation + continuity | Seedance (seevio.ai or Volcano Ark) per shot with speech audio; one identity source per creative: the first clip's frame becomes the character reference and the first frame of every later shot; network backoff | `stages/video.py::VideoStage`, `seedance.py` |
+| §15 Video QC + Repair | rules (timing, audible speech) + VLM judge per clip against the identity reference and the previous shot (identity / product / continuity / defects / speech); soft_fail → retry → simplify_action → change_framing / regenerate_audio, jump-cut / trim resolved in the edit; hard_fail → FAILED | `stages/video.py` |
+| §21 Metrics / §21.1 rubric | per-creative metrics (time to ready, acceptance, retry rate, intervention) in every record; LLM-judge rubric over plan + keyframes | `storage/records.py::compute_metrics`, `scripts/evaluate_rubric.py` |
 | §16 Creative Plan | pydantic models, `select_angle/select_character`, `why_this_creative()` | `vidai/plan.py` |
-| §12 / §19 Guided vs Auto, state machine, retries | `CreativePipeline` with pause points, checkpoints after every stage, resume / revise from the right group only | `vidai/agent/harness.py` |
+| §4.4 / §12 / §19 Guided vs Auto, state machine, retries | `CreativePipeline` with pause points (plus a product-confirmation pause when the page data is thin), checkpoints after every stage, resume / revise from the right group only | `vidai/agent/harness.py` |
 | §17 structured prompts | one markdown prompt per module + shared non-fabrication rules | `vidai/agent/prompts/` |
 
 Retry rules (PRD §19.1): provider/network errors back off and retry the identical request;
@@ -80,6 +81,13 @@ python -m vidai.cli generate --url https://shop.example/products/x --mode auto -
 python -m vidai.cli revise cr_ab12cd34 --character male_home_cook_01
 python -m vidai.cli revise cr_ab12cd34 --angle angle_bc973ae8
 python -m vidai.cli revise cr_ab12cd34 --regenerate-shot shot_02
+python -m vidai.cli revise cr_ab12cd34 --regenerate-beat b2          # fresh take on one beat, then QC
+python -m vidai.cli revise cr_ab12cd34 --regenerate-script           # same strategy + character, new script
+python -m vidai.cli save-character cr_ab12cd34                       # generated character -> personal library
+
+# Batch + evaluation
+python scripts/run_batch.py --urls-file scripts/urls_demo.txt --out results
+python scripts/evaluate_rubric.py cr_ab12cd34 cr_ef56ab78 --out results/rubric
 
 python -m vidai.cli show cr_ab12cd34          # plan summary + "why this creative"
 python -m vidai.cli list
@@ -114,10 +122,11 @@ data/
 - `--mock` exercises both repair loops deterministically: the first copy draft is too long and
   one beat is brand copy (Script QC fails once → Rewrite Agent), and the first Video QC verdict
   is a soft fail (one shot regenerated with `simplify_action`).
-- `tests/test_pipeline_mock.py`: auto-mode e2e, guided pauses with overrides, halt + resume,
-  revise-angle re-runs downstream only, single-shot regeneration, unreachable page →
-  `--product-text`, and unit tests for shot segmentation / rule QC.
-  `PYTHONNOUSERSITE=1 python -m pytest tests/ -q`
+- `tests/test_pipeline_mock.py` + `tests/test_prd_rules.py`: auto-mode e2e (identity reference,
+  audio, metrics), guided pauses with overrides, product-confirmation pause, halt + resume,
+  revise-angle re-runs downstream only, beat / shot regeneration, save-character, unreachable
+  page → `--product-text`, PRD vocabulary aliases, canonical plan JSON, shot segmentation and
+  planner-proposal validation, rule QC.  `PYTHONNOUSERSITE=1 python -m pytest tests/ -q`
 - Every LLM call (payload, reply, schema-repair attempts) is in `trace.jsonl`; every stage output
   is a checkpoint under `stages/`.
 

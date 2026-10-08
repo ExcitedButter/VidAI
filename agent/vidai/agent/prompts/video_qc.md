@@ -12,7 +12,9 @@ Status: "pass"; "soft_fail" for fixable issues (retry, simplify action, change f
 Suggest ONE repairAction from: retry_same_prompt, simplify_action, change_framing,
 replace_clip, trim_boundary, use_jump_cut, downgrade_visual_action.
 
-Context JSON precedes the images. Output schema:
+The user message is the context JSON (shot, speech, continuity anchors, deterministic
+`ruleChecks` for timing / audio) followed by the images: the candidate clip's keyframes first,
+then the reference frames described in `referenceNote`. Output schema:
 { "status": "pass|soft_fail|hard_fail",
   "checks": { "identity": {"status": "", "reason": ""}, "product": {...}, "continuity": {...},
               "visualDefects": {...}, "speech": {...} },

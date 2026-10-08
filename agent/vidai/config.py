@@ -59,11 +59,13 @@ class VidaiSettings:
     resolution: str = "720p"
     max_shot_s: float = 8.0          # stable clip length for the video model (PRD §13.4)
     hard_max_shot_s: float = 10.0    # never request a longer clip than this
-    min_shot_s: float = 2.0
+    min_shot_s: float = 4.0          # shortest clip the video model returns (Seedance 2.5 on seevio: 4 s)
     words_per_minute: int = 150
     max_script_repairs: int = 2
     max_video_repairs: int = 2
     schema_repair_retries: int = 2   # PRD §19.1 "schema invalid -> one repair retry"
+    generate_audio: bool = True      # talking head: the character speaks the line (PRD §14-15 audio / speech QC)
+    continuity_reference: bool = True  # reuse the first clip's frame as the identity source for later shots (PRD §11.4, §14.3)
     character_library: Path | None = None
     # Runtime
     data_dir: Path = field(default_factory=lambda: REPO_ROOT / "data")
@@ -95,11 +97,13 @@ class VidaiSettings:
             resolution=_env("VIDAI_RESOLUTION", "720p"),
             max_shot_s=_env_float("VIDAI_MAX_SHOT_SEC", 8.0),
             hard_max_shot_s=_env_float("VIDAI_HARD_MAX_SHOT_SEC", 10.0),
-            min_shot_s=_env_float("VIDAI_MIN_SHOT_SEC", 2.0),
+            min_shot_s=_env_float("VIDAI_MIN_SHOT_SEC", 4.0),
             words_per_minute=_env_int("VIDAI_WPM", 150),
             max_script_repairs=_env_int("VIDAI_MAX_SCRIPT_REPAIRS", 2),
             max_video_repairs=_env_int("VIDAI_MAX_VIDEO_REPAIRS", 2),
             schema_repair_retries=_env_int("VIDAI_SCHEMA_REPAIR_RETRIES", 2),
+            generate_audio=_env("VIDAI_GENERATE_AUDIO", "1") in {"1", "true", "yes"},
+            continuity_reference=_env("VIDAI_CONTINUITY_REFERENCE", "1") in {"1", "true", "yes"},
             character_library=Path(library).expanduser() if library else None,
             data_dir=Path(data_dir).expanduser() if data_dir else REPO_ROOT / "data",
             mock=_env("VIDAI_MOCK", "0") in {"1", "true", "yes"},

@@ -96,6 +96,20 @@ def test_auto_mode_end_to_end(tmp_path: Path, fixture_page: Path) -> None:
                    "SCRIPT_READY", "SHOT_PLANNING", "VIDEO_GENERATING", "VIDEO_QC", "REPAIRING", "READY"):
         assert status in statuses, status
     assert record_dir and (record_dir / "final.mp4").is_file() and (record_dir / "why_this_creative.json").is_file()
+    # PRD §11.4 / §14.3: one identity source per creative — the first clip's frame feeds every later shot
+    assert plan.character.visualReferenceAssets and Path(plan.character.visualReferenceAssets[0]).is_file()
+    events = [json.loads(line) for line in (run_dir / "trace.jsonl").read_text().splitlines()]
+    assert any(e["kind"] == "identity_reference" for e in events)
+    generated = [e for e in events if e["kind"] == "shot_generated"]
+    assert generated[0]["first_frame"] == "" and all(e["first_frame"] for e in generated[1:])
+    # PRD §14-15: the talking head has an audible speech track and the final video keeps it
+    from vidai.agent.media import ffprobe_metadata
+    assert ffprobe_metadata(Path(plan.finalVideo))["has_audio"]
+    assert all(s.qc.checks["audio"].status == "pass" for s in plan.shotPlan)
+    # PRD §21 metrics are recorded
+    metrics = json.loads((record_dir / "metrics.json").read_text())
+    assert metrics["generationSucceededWithoutIntervention"] is True and metrics["shots"] == len(plan.shotPlan)
+    assert metrics["shotRetryRate"] == round(1 / len(plan.shotPlan), 3)
     rows = [json.loads(l) for l in (settings.data_dir / "records_manifest.jsonl").read_text().splitlines() if l.strip()]
     assert rows[-1]["creativeId"] == plan.creativeId and rows[-1]["status"] == "READY"
     why = plan.why_this_creative()
@@ -226,3 +240,52 @@ def test_rule_checks_flag_long_script_and_late_product() -> None:
     plan.speechVisualBeats = [_beat("b1", 3), _beat("b2", 4, "hold_product", True), _beat("b3", 4), _beat("b4", 4)]
     checks, instructions, failed = rule_checks(plan)
     assert all(c.status == "pass" for c in checks.values()) and not instructions and not failed
+
+
+def test_regenerate_beats_then_requalify(tmp_path: Path, fixture_page: Path) -> None:
+    settings = _settings(tmp_path)
+    plan = new_plan(settings, str(fixture_page), mode="auto")
+    plan, _, _ = _run(plan, settings)
+    assert plan.status == Status.READY, plan.error
+    start = prepare_revision(plan, regenerate_beats=["b2"])
+    assert start == "script_qc" and plan.shotPlan == [] and plan.speechVisualBeats
+    plan, run_dir, _ = _run(plan, settings, start_group=start)
+    assert plan.status == Status.READY, plan.error
+    assert plan.userOverrides["regeneratedBeats"] == ["b2"] and "regenerateBeats" not in plan.userOverrides
+    modules = [json.loads(l)["module"] for l in (run_dir / "trace.jsonl").read_text().splitlines()
+               if json.loads(l)["kind"] == "module_reply"]
+    assert modules[0] == "script_repair" and "beat_planner" not in modules
+    assert plan.version == 2 and Path(plan.finalVideo).is_file()
+
+
+def test_guided_product_confirmation_pause(tmp_path: Path) -> None:
+    """PRD §4.4: thin product data pauses guided mode so the user can confirm or add a description."""
+    settings = _settings(tmp_path)
+    seen: list[str] = []
+
+    def on_pause(plan: CreativePlan, group: str) -> None:
+        seen.append(group)
+        raise PipelineHalt()
+
+    plan = new_plan(settings, str(tmp_path / "missing.html"), mode="guided",
+                    product_text="A hand-powered espresso maker for travel.")
+    plan, _, _ = _run(plan, settings, on_pause=on_pause)
+    assert seen == ["product"] and plan.status == Status.ANALYZING_PRODUCT
+    assert plan.product is not None and plan.product.confidence < 0.5
+
+
+def test_save_generated_character_to_personal_library(tmp_path: Path, fixture_page: Path) -> None:
+    from vidai.agent.stages.character import load_library
+    from vidai.cli import main as cli_main
+
+    settings = _settings(tmp_path)
+    plan = new_plan(settings, str(fixture_page), mode="auto", new_character=True)
+    plan, _, _ = _run(plan, settings)
+    assert plan.status == Status.READY, plan.error
+    assert plan.character.source == "generated" and plan.characterBrief is not None
+    assert plan.character.continuityAnchors.get("face") and plan.character.visualReferenceAssets
+    assert cli_main(["save-character", plan.creativeId, "--data-dir", str(settings.data_dir)]) == 0
+    personal = settings.data_dir / "personal_library.json"
+    assert personal.is_file()
+    library = load_library(None, personal)
+    assert any(c.characterId == plan.character.characterId for c in library) and len(library) == 7

@@ -6,12 +6,13 @@ Every stage reads from and writes into one `CreativePlan`. The frontend / CLI ma
 
 from __future__ import annotations
 
+import re
 import secrets
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 
 def utc_now_iso() -> str:
@@ -62,6 +63,67 @@ RepairAction = Literal[
 ANGLE_FAMILIES: tuple[str, ...] = AngleFamily.__args__  # type: ignore[attr-defined]
 ARCHETYPES: tuple[str, ...] = Archetype.__args__  # type: ignore[attr-defined]
 VISUAL_TYPES: tuple[str, ...] = VisualType.__args__  # type: ignore[attr-defined]
+
+# The PRD uses informal spellings in its examples (hold_and_show_product, product_demo, "PAS + Proof");
+# normalize them so LLM output written in PRD vocabulary never fails schema validation.
+_VISUAL_ALIASES = {
+    "hold_and_show_product": "hold_product", "show_product": "hold_product", "product_reveal": "hold_product",
+    "hold": "hold_product", "holding_product": "hold_product",
+    "product_demo": "simple_demo", "demo": "simple_demo", "product_interaction": "simple_demo",
+    "wear_product": "wear_or_use_product", "use_product": "wear_or_use_product",
+    "wearing_product": "wear_or_use_product", "using_product": "wear_or_use_product", "wear": "wear_or_use_product",
+    "close_up": "product_close_up", "closeup": "product_close_up", "product_closeup": "product_close_up",
+    "lifestyle": "lifestyle_talking_head", "talking_head_with_product": "lifestyle_talking_head",
+    "talking_head_product_visible": "lifestyle_talking_head",
+}
+_ANGLE_ALIASES = {"pain": "pain_point", "painpoint": "pain_point", "pain_point_relief": "pain_point",
+                  "lifestyle": "aspirational_lifestyle", "aspirational": "aspirational_lifestyle",
+                  "demo": "demo_first", "discovery": "personal_discovery", "ugc": "personal_discovery"}
+_ARCHETYPE_ALIASES = {"pas": "pas_proof", "pas_proof_cta": "pas_proof", "pas_and_proof": "pas_proof",
+                      "pasproof": "pas_proof", "desired_life": "desired_life_bridge", "contrarian": "contrarian_reframe",
+                      "demo": "demo_first", "curiosity": "curiosity_reveal", "discovery": "personal_discovery"}
+_STATUS_ALIASES = {"ok": "pass", "passed": "pass", "passing": "pass", "true": "pass", "failed": "fail",
+                   "failing": "fail", "error": "fail", "false": "fail", "warning": "warn", "caution": "warn"}
+_SHOT_STATUS_ALIASES = {"ok": "pass", "passed": "pass", "fail": "soft_fail", "failed": "soft_fail", "soft": "soft_fail",
+                        "softfail": "soft_fail", "warn": "soft_fail", "hard": "hard_fail", "hardfail": "hard_fail"}
+_REPAIR_ALIASES = {"retry": "retry_same_prompt", "retry_same": "retry_same_prompt", "regenerate": "retry_same_prompt",
+                   "simplify": "simplify_action", "simplify_motion": "simplify_action", "reframe": "change_framing",
+                   "framing": "change_framing", "replace": "replace_clip", "trim": "trim_boundary",
+                   "jump_cut": "use_jump_cut", "jumpcut": "use_jump_cut", "audio": "regenerate_audio",
+                   "downgrade": "downgrade_visual_action", "downgrade_action": "downgrade_visual_action"}
+
+
+def _key(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", str(value).strip().lower()).strip("_")
+
+
+def normalize_visual_type(value: Any) -> Any:
+    """Map any reasonable spelling onto the 6 MVP visual beat types (PRD §12.2)."""
+    if not isinstance(value, str):
+        return value
+    key = _key(value)
+    if key in VISUAL_TYPES:
+        return key
+    if key in _VISUAL_ALIASES:
+        return _VISUAL_ALIASES[key]
+    if "close" in key:
+        return "product_close_up"
+    if "demo" in key:
+        return "simple_demo"
+    if "wear" in key or "use" in key or "apply" in key:
+        return "wear_or_use_product"
+    if "hold" in key or "show" in key or "reveal" in key:
+        return "hold_product"
+    if "lifestyle" in key:
+        return "lifestyle_talking_head"
+    return "talking_head"
+
+
+def normalize_enum(value: Any, allowed: tuple[str, ...], aliases: dict[str, str]) -> Any:
+    if not isinstance(value, str):
+        return value
+    key = _key(value)
+    return key if key in allowed else aliases.get(key, value)
 
 
 class PlanModel(BaseModel):
@@ -130,6 +192,11 @@ class SellingAngle(PlanModel):
     scores: dict[str, float] = Field(default_factory=dict)
     score: float = 0.0
 
+    @field_validator("angleFamily", mode="before")
+    @classmethod
+    def _norm_family(cls, value: Any) -> Any:
+        return normalize_enum(value, ANGLE_FAMILIES, _ANGLE_ALIASES)
+
 
 # ----------------------------------------------------------------------------- Stage D / E
 class ScriptStrategy(PlanModel):
@@ -143,6 +210,11 @@ class ScriptStrategy(PlanModel):
     requiredProof: list[str] = Field(default_factory=list)
     requiredProductMoments: list[str] = Field(default_factory=list)
 
+    @field_validator("archetype", mode="before")
+    @classmethod
+    def _norm_archetype(cls, value: Any) -> Any:
+        return normalize_enum(value, ARCHETYPES, _ARCHETYPE_ALIASES)
+
 
 class Beat(PlanModel):
     """PRD §8.2 semantic beat."""
@@ -154,12 +226,22 @@ class Beat(PlanModel):
     productRequired: bool = False
     estimatedDurationSec: float = 3.0
 
+    @field_validator("visualIntent", mode="before")
+    @classmethod
+    def _norm_intent(cls, value: Any) -> Any:
+        return normalize_visual_type(value)
+
 
 class VisualSpec(PlanModel):
     type: VisualType = "talking_head"
     productRequired: bool = False
     action: str = ""
     framing: str = "medium"
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _norm_type(cls, value: Any) -> Any:
+        return normalize_visual_type(value)
 
 
 class SpeechVisualBeat(PlanModel):
@@ -178,6 +260,11 @@ class QCCheck(PlanModel):
     reason: str = ""
     beatIds: list[str] = Field(default_factory=list)
 
+    @field_validator("status", mode="before")
+    @classmethod
+    def _norm_status(cls, value: Any) -> Any:
+        return normalize_enum(value, ("pass", "fail", "warn"), _STATUS_ALIASES)
+
 
 class ScriptQC(PlanModel):
     """PRD §9.3."""
@@ -188,6 +275,11 @@ class ScriptQC(PlanModel):
     estimatedDurationSec: float = 0.0
     repairRounds: int = 0
     warnings: list[str] = Field(default_factory=list)
+
+    @field_validator("overall", mode="before")
+    @classmethod
+    def _norm_overall(cls, value: Any) -> Any:
+        return normalize_enum(value, ("pass", "fail", "warn"), _STATUS_ALIASES)
 
 
 # ----------------------------------------------------------------------------- Stage G
@@ -249,6 +341,19 @@ class ShotQC(PlanModel):
     repairAction: Optional[RepairAction] = None
     reason: str = ""
 
+    @field_validator("status", mode="before")
+    @classmethod
+    def _norm_shot_status(cls, value: Any) -> Any:
+        return normalize_enum(value, ("pass", "soft_fail", "hard_fail"), _SHOT_STATUS_ALIASES)
+
+    @field_validator("repairAction", mode="before")
+    @classmethod
+    def _norm_repair(cls, value: Any) -> Any:
+        if value in (None, "", "none", "null"):
+            return None
+        normalized = normalize_enum(value, RepairAction.__args__, _REPAIR_ALIASES)  # type: ignore[attr-defined]
+        return normalized if normalized in RepairAction.__args__ else None  # type: ignore[attr-defined]
+
 
 class Shot(PlanModel):
     """PRD §13.3 shot plan entry + generation / QC state."""
@@ -256,7 +361,8 @@ class Shot(PlanModel):
     shotId: str
     title: str = ""
     beatIds: list[str] = Field(default_factory=list)
-    durationSec: float = 4.0
+    durationSec: float = 4.0          # clip length requested from the video model
+    speechSec: float = 0.0            # planned spoken duration of the beats in this shot
     visualType: VisualType = "talking_head"
     productVisible: bool = False
     framing: str = "medium"
@@ -269,12 +375,22 @@ class Shot(PlanModel):
     qc: Optional[ShotQC] = None
     repairHistory: list[str] = Field(default_factory=list)
 
+    @field_validator("visualType", mode="before")
+    @classmethod
+    def _norm_shot_type(cls, value: Any) -> Any:
+        return normalize_visual_type(value)
+
 
 class VideoQC(PlanModel):
     overall: Literal["pass", "fail", "warn"] = "pass"
     shots: dict[str, ShotQC] = Field(default_factory=dict)
     repairRounds: int = 0
     warnings: list[str] = Field(default_factory=list)
+
+    @field_validator("overall", mode="before")
+    @classmethod
+    def _norm_video_overall(cls, value: Any) -> Any:
+        return normalize_enum(value, ("pass", "fail", "warn"), _STATUS_ALIASES)
 
 
 class GenerationSettings(PlanModel):
@@ -331,18 +447,21 @@ class CreativePlan(PlanModel):
     error: Optional[str] = None
 
     # -------------------------------------------------------------- selections
+    @computed_field  # type: ignore[misc]
     @property
     def audience(self) -> Optional[Audience]:
         if self.audienceIndex is None or not self.audienceCandidates:
             return None
         return self.audienceCandidates[self.audienceIndex]
 
+    @computed_field  # type: ignore[misc]
     @property
     def sellingAngle(self) -> Optional[SellingAngle]:
         if self.angleIndex is None or not self.angleCandidates:
             return None
         return self.angleCandidates[self.angleIndex]
 
+    @computed_field  # type: ignore[misc]
     @property
     def character(self) -> Optional[Character]:
         if self.characterIndex is None or not self.characterCandidates:

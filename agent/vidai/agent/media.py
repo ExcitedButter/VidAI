@@ -86,3 +86,18 @@ def concat_clips(clips: list[Path], dst: Path) -> Path:
     if proc.returncode != 0:
         raise RuntimeError(f"concat failed: {proc.stderr[:400]}")
     return dst
+
+
+def audio_mean_volume_db(path: Path) -> float | None:
+    """Mean loudness of the audio track in dBFS via ffmpeg volumedetect; None when it cannot be measured."""
+    proc = subprocess.run(
+        ["ffmpeg", "-v", "info", "-i", str(path), "-vn", "-af", "volumedetect", "-f", "null", "-"],
+        capture_output=True, text=True,
+    )
+    for line in (proc.stderr or "").splitlines():
+        if "mean_volume:" in line:
+            try:
+                return float(line.split("mean_volume:")[1].split("dB")[0].strip())
+            except ValueError:
+                return None
+    return None

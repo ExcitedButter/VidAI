@@ -63,7 +63,7 @@ class CreativePipeline:
             for group in GROUPS[GROUPS.index(start_group):]:
                 await getattr(self, f"_run_{group}")()
                 ctx.checkpoint(group)
-                if group in PAUSE_POINTS and plan.mode == "guided":
+                if self._should_pause(group):
                     try:
                         await ctx.pause(group)
                     except PipelineHalt:
@@ -82,6 +82,15 @@ class CreativePipeline:
             ctx.trace("pipeline_failed", error=plan.error)
             ctx.checkpoint("failed")
         return plan
+
+    def _should_pause(self, group: str) -> bool:
+        plan = self.ctx.plan
+        if plan.mode != "guided":
+            return False
+        if group in PAUSE_POINTS:
+            return True
+        # PRD §4.4: thin / ambiguous product data -> the user confirms before strategy is built on it
+        return group == "product" and product_needs_confirmation(plan)
 
     async def _after_pause(self, group: str) -> None:
         """Apply what the user did at the pause point (PRD §12 Guided flow)."""
@@ -164,6 +173,11 @@ class CreativePipeline:
         ctx.checkpoint(stage.name)
 
 
+def product_needs_confirmation(plan: CreativePlan) -> bool:
+    product = plan.product
+    return product is not None and (product.confidence < 0.5 or product.multipleProductsOnPage)
+
+
 # ---------------------------------------------------------------------- resume / revise policy
 def resume_group(plan: CreativePlan) -> Optional[str]:
     """Which group continues a saved plan; None when it is already READY."""
@@ -182,6 +196,8 @@ def prepare_revision(
     character_id: Optional[str] = None,
     script_beats: Optional[Iterable[Any]] = None,
     shot_ids: Optional[Iterable[str]] = None,
+    regenerate_script: bool = False,
+    regenerate_beats: Optional[Iterable[str]] = None,
 ) -> str:
     """Apply one user change, bump the version, and return the group to restart from.
 
@@ -209,6 +225,19 @@ def prepare_revision(
         plan.userOverrides["script"] = f"edited at v{plan.version}"
         _clear_from(plan, "shots")
         return "script_qc"
+    if regenerate_script:   # PRD §18.4 "Regenerate all": same strategy + character, fresh beats and copy
+        _clear_from(plan, "script")
+        plan.userOverrides["regeneratedScript"] = f"v{plan.version}"
+        return "script"
+    if regenerate_beats:    # PRD §22 P1 "Beat-level regenerate": rewrite only those beats, then QC again
+        wanted = list(dict.fromkeys(regenerate_beats))
+        known = {b.beatId for b in plan.speechVisualBeats}
+        missing = [b for b in wanted if b not in known]
+        if missing:
+            raise KeyError(f"unknown beat ids {missing}; beats: {sorted(known)}")
+        plan.userOverrides["regenerateBeats"] = wanted
+        _clear_from(plan, "shots")
+        return "script_qc"
     if shot_ids:
         wanted = set(shot_ids)
         known = {s.shotId for s in plan.shotPlan}
@@ -222,7 +251,7 @@ def prepare_revision(
         plan.userOverrides.setdefault("regeneratedShots", []).extend(sorted(wanted))
         plan.qc["video"] = None
         return "video"
-    raise ValueError("nothing to revise: pass an angle, a character, an edited script or shot ids")
+    raise ValueError("nothing to revise: pass an angle, a character, an edited script, beats or shots to regenerate")
 
 
 def _clear_from(plan: CreativePlan, group: str) -> None:

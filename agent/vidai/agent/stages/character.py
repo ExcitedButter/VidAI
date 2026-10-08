@@ -34,10 +34,29 @@ class _BriefReply(CharacterBrief):
     continuityAnchors: dict[str, str] = {}
 
 
-def load_library(path: Path | None) -> list[Character]:
+def load_library(path: Path | None, personal: Path | None = None) -> list[Character]:
+    """Curated library plus the user's personal library (characters saved with `save-character`)."""
     library_path = path or DEFAULT_LIBRARY
     data = json.loads(library_path.read_text(encoding="utf-8"))
-    return [Character.model_validate(item) for item in data.get("characters", [])]
+    characters = [Character.model_validate(item) for item in data.get("characters", [])]
+    if personal and personal.is_file():
+        extra = json.loads(personal.read_text(encoding="utf-8")).get("characters", [])
+        characters += [Character.model_validate(item) for item in extra]
+    return characters
+
+
+def interaction_needs(product) -> list[str]:
+    """PRD §11.3 matching input 'Product Interaction Needs', derived from the category (PRD §8.5)."""
+    text = " ".join([product.category, product.positioning, " ".join(product.useCases[:3])]).lower() if product else ""
+    if re.search(r"apparel|cloth|legging|shirt|shoe|sneaker|footwear|activewear|jacket|pant|dress|sock|hat|bag|wallet|watch|jewel|glass", text):
+        return ["worn or carried on camera", "light movement that shows fit / use"]
+    if re.search(r"skin|serum|cream|beauty|makeup|cosmetic|brow|lip|hair|fragrance|lotion", text):
+        return ["held in hand with the label visible", "light application gesture"]
+    if re.search(r"coffee|tea|drink|bottle|food|kitchen|cook|kettle|snack|supplement|brew", text):
+        return ["held and used once (pour / sip / scoop)", "product close-up"]
+    if re.search(r"tech|electronic|device|gadget|phone|headphone|speaker|camera|desk|keyboard|charger|smart", text):
+        return ["held and shown to camera", "one simple on-screen demo"]
+    return ["held and shown to camera when the core benefit is explained"]
 
 
 def _tokens(*texts: Any) -> set[str]:
@@ -89,7 +108,8 @@ class CharacterStage(Stage):
         if product is None or audience is None or angle is None:
             raise StageError("character casting needs product, audience and angle")
         weights = axis_weights(angle.angleFamily, product.category)
-        library = load_library(ctx.settings.character_library)
+        needs = interaction_needs(product)
+        library = load_library(ctx.settings.character_library, ctx.settings.data_dir / "personal_library.json")
         if not library:
             raise StageError("character library is empty")
         for character in library:
@@ -99,7 +119,7 @@ class CharacterStage(Stage):
         reply = await call_module(
             ctx, "character_matcher",
             {"product": product, "audience": audience, "sellingAngle": angle, "weights": weights,
-             "candidates": candidates},
+             "productInteractionNeeds": needs, "candidates": candidates},
             model=_MatchReply,
         )
         by_id = {c.characterId: c for c in candidates}
@@ -117,21 +137,25 @@ class CharacterStage(Stage):
 
         want_new = bool(plan.userOverrides.get("newCharacter")) or recommended.matchScore < MATCH_THRESHOLD
         if want_new:
-            generated = await self._generate_character(ctx, weights)
+            generated = await self._generate_character(ctx, weights, needs)
             ranked.insert(0, generated)
             recommended = generated if plan.userOverrides.get("newCharacter") else recommended
         plan.characterCandidates = ranked
         plan.characterIndex = ranked.index(recommended)
 
-    async def _generate_character(self, ctx: PipelineContext, weights: dict[str, float]) -> Character:
+    async def _generate_character(self, ctx: PipelineContext, weights: dict[str, float],
+                                  needs: list[str]) -> Character:
         """PRD §11.4: generation only from a structured Character Brief; anchors locked up front."""
         plan = ctx.plan
         brief = await call_module(
             ctx, "character_brief",
             {"product": plan.product, "audience": plan.audience, "sellingAngle": plan.sellingAngle,
-             "weights": weights, "avoid": plan.product.constraints if plan.product else []},
+             "weights": weights, "productInteractionNeeds": needs,
+             "avoid": plan.product.constraints if plan.product else []},
             model=_BriefReply,
         )
+        if not brief.productInteractionNeeds:
+            brief.productInteractionNeeds = list(needs)
         plan.characterBrief = CharacterBrief.model_validate(brief.model_dump())
         anchors = dict(brief.continuityAnchors) or {
             "face": brief.visualIdentity.get("face", ""), "hair": brief.visualIdentity.get("hair", ""),

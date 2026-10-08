@@ -98,17 +98,9 @@ class MockProvider:
 
     async def vision_json(self, prompt: str, image_paths: list[str], purpose: str = "") -> dict[str, Any]:
         self.calls.append(purpose)
-        if purpose != "video_qc":
-            return {"status": "pass", "note": f"mock vision reply for {purpose!r}"}
-        self._video_qc_calls += 1
-        checks = {k: {"status": "pass", "reason": "ok"} for k in
-                  ("identity", "product", "continuity", "visualDefects", "speech")}
-        if self._video_qc_calls == 1 and self.fail_first_video_qc:
-            checks["visualDefects"] = {"status": "fail", "reason": "fingers merge with the product on the hand-off"}
-            return {"status": "soft_fail", "checks": checks, "repairAction": "simplify_action",
-                    "reason": "hand / product geometry breaks during the hand-off"}
-        return {"status": "pass", "checks": checks, "repairAction": None,
-                "reason": "clip consistent with references"}
+        if purpose == "video_qc":
+            return self._judge_clip()
+        return {"status": "pass", "note": f"mock vision reply for {purpose!r}"}
 
     async def close(self) -> None:
         return None
@@ -302,11 +294,34 @@ class MockProvider:
         anchor = anchor or "a real creator filming a selfie-style phone video"
         product = (payload.get("product") or {}).get("productName") or "the product"
         shots = []
-        for shot in payload.get("shots", []):
+        for shot in payload.get("proposedShots") or payload.get("shots") or []:
             action = shot.get("actions") or _ACTIONS.get(shot.get("visualType", ""), "talks straight to the camera").replace("{product}", product)
-            shots.append({"shotId": shot["shotId"],
+            shots.append({"shotId": shot["shotId"], "beatIds": list(shot.get("beatIds", [])),
+                          "visualType": shot.get("visualType", ""),
                           "prompt": f"{anchor}. {shot.get('framing', 'medium')} shot, handheld phone, single take. "
                                     f"The creator {action} and says: \"{shot.get('speech', '')}\". "
                                     "Photoreal, natural skin, correct hands, product label sharp, no captions.",
                           "framing": shot.get("framing", "medium"), "notes": ""})
         return {"shots": shots}
+
+    # ------------------------------------------------------------------ Stage K (via complete_json)
+    def _video_qc(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self._judge_clip()
+
+    def _judge_clip(self) -> dict[str, Any]:
+        self._video_qc_calls += 1
+        checks = {k: {"status": "pass", "reason": "ok"} for k in
+                  ("identity", "product", "continuity", "visualDefects", "speech")}
+        if self._video_qc_calls == 1 and self.fail_first_video_qc:
+            checks["visualDefects"] = {"status": "fail", "reason": "fingers merge with the product on the hand-off"}
+            return {"status": "soft_fail", "checks": checks, "repairAction": "simplify_action",
+                    "reason": "hand / product geometry breaks during the hand-off"}
+        return {"status": "pass", "checks": checks, "repairAction": None,
+                "reason": "clip consistent with references"}
+
+    # ------------------------------------------------------------------ evaluation rubric (PRD §21.1)
+    def _rubric_eval(self, payload: dict[str, Any]) -> dict[str, Any]:
+        dims = ("audienceFit", "sellingAngleStrength", "characterFit", "naturalness",
+                "productIntegration", "continuity", "overallPublishability")
+        return {"scores": {d: {"score": 4, "reason": "mock judge", "planLayer": "script"} for d in dims},
+                "lowestDimension": "continuity", "summary": "mock rubric evaluation"}

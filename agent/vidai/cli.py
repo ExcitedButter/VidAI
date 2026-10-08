@@ -60,6 +60,8 @@ def _build_parser() -> argparse.ArgumentParser:
     res.add_argument("--select-angle", default=None, help="angleId to use (at STRATEGY_READY)")
     res.add_argument("--select-character", default=None, help="characterId to use (at CHARACTER_READY)")
     res.add_argument("--script-json", default=None, help="Edited script JSON (at SCRIPT_READY)")
+    res.add_argument("--product-text", default=None,
+                     help="Product description (text or @file) to re-run product analysis with")
     _common(res)
 
     rev = sub.add_parser("revise", help="Change one decision on a finished creative; only downstream steps re-run")
@@ -68,7 +70,14 @@ def _build_parser() -> argparse.ArgumentParser:
     rev.add_argument("--character", default=None, help="characterId")
     rev.add_argument("--script-json", default=None, help="Edited script JSON ({speechVisualBeats:[...]} or a list)")
     rev.add_argument("--regenerate-shot", action="append", default=None, metavar="SHOT_ID")
+    rev.add_argument("--regenerate-script", action="store_true", help="Fresh beats + copy, same strategy and character")
+    rev.add_argument("--regenerate-beat", action="append", default=None, metavar="BEAT_ID",
+                     help="Fresh take on one beat only (repeatable)")
     _common(rev)
+
+    save = sub.add_parser("save-character", help="Save a creative's generated character to the personal library")
+    save.add_argument("creative")
+    save.add_argument("--data-dir", default=None)
 
     show = sub.add_parser("show", help="Print a creative plan")
     show.add_argument("creative")
@@ -111,6 +120,19 @@ def _load_script_json(path: str) -> list[dict[str, Any]]:
 
 def _interactive_pause(plan: CreativePlan, group: str) -> None:
     """Terminal version of the Guided-mode UI (PRD §12)."""
+    if group == "product":
+        product = plan.product
+        if product:
+            print(f"\nproduct: {product.productName} ({product.brandName or 'brand n/a'}) confidence {product.confidence:.2f}")
+            print(f"  category: {product.category}  price: {product.price}")
+            print(f"  features: {'; '.join(product.features[:5])}")
+            print(f"  notes: {'; '.join(product.sourceNotes[:3])}")
+            if product.multipleProductsOnPage:
+                print("  several products on the page; the primary one was used")
+        choice = input("product data is thin/ambiguous — Enter = continue anyway, q = stop (resume with --product-text): ").strip().lower()
+        if choice == "q":
+            raise PipelineHalt()
+        return
     if group == "strategy":
         audience = plan.audience
         if audience:
@@ -238,6 +260,9 @@ def _cmd_resume(args: argparse.Namespace) -> int:
     if args.select_character:
         plan.select_character(args.select_character, by_user=True)
     start = resume_group(plan)
+    if args.product_text:
+        plan.productTextFallback = _read_text_arg(args.product_text)
+        start = "product"
     if args.script_json:
         from vidai.plan import SpeechVisualBeat
 
@@ -260,7 +285,8 @@ def _cmd_revise(args: argparse.Namespace) -> int:
         start = prepare_revision(
             plan, angle_id=args.angle, character_id=args.character,
             script_beats=_load_script_json(args.script_json) if args.script_json else None,
-            shot_ids=args.regenerate_shot,
+            shot_ids=args.regenerate_shot, regenerate_script=args.regenerate_script,
+            regenerate_beats=args.regenerate_beat,
         )
     except (KeyError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -284,6 +310,30 @@ def _cmd_show(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_save_character(args: argparse.Namespace) -> int:
+    """PRD §11.4 'Save to Library': generated characters never enter the curated library automatically."""
+    settings = VidaiSettings.from_env()
+    if args.data_dir:
+        settings.data_dir = Path(args.data_dir).expanduser()
+    plan, _ = load_plan(settings, args.creative)
+    character = plan.character
+    if character is None:
+        print("error: creative has no selected character", file=sys.stderr)
+        return 2
+    path = settings.data_dir / "personal_library.json"
+    data = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {"characters": []}
+    if any(c.get("characterId") == character.characterId for c in data["characters"]):
+        print(f"{character.characterId} is already in {path}")
+        return 0
+    entry = character.model_dump(mode="json")
+    entry.update({"source": "curated", "matchScore": 0.0, "whyThisPerson": ""})
+    data["characters"].append(entry)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"saved {character.characterId} ({character.name}) -> {path}")
+    return 0
+
+
 def _cmd_list(args: argparse.Namespace) -> int:
     settings = VidaiSettings.from_env()
     if args.data_dir:
@@ -304,7 +354,7 @@ def _cmd_list(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     handlers = {"generate": _cmd_generate, "resume": _cmd_resume, "revise": _cmd_revise,
-                "show": _cmd_show, "list": _cmd_list}
+                "show": _cmd_show, "list": _cmd_list, "save-character": _cmd_save_character}
     return handlers[args.command](args)
 
 

@@ -3,33 +3,62 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
+import shutil
 from pathlib import Path
-from typing import Any
 
-from vidai.agent.media import concat_clips, extract_frames, ffprobe_metadata, normalize_clip
-from vidai.agent.prompts import load_prompt
+from vidai.agent.media import audio_mean_volume_db, concat_clips, extract_frames, ffprobe_metadata, normalize_clip
 from vidai.agent.run_context import PipelineContext
-from vidai.agent.stages.base import Stage, StageError
+from vidai.agent.stages.base import Stage, StageError, call_module
 from vidai.plan import QCCheck, Shot, ShotQC, Status, VideoQC
 
 logger = logging.getLogger(__name__)
 
+SILENCE_DB = -45.0
+# Soft fails the Repair Agent resolves in the edit instead of regenerating (PRD §14.4: jump cuts are the idiom).
+ACCEPT_IN_EDIT = {"use_jump_cut", "trim_boundary"}
 _SIMPLIFY_SUFFIX = (" Simplified action: the character simply holds the product up to the camera, "
                     "then brings it closer for a clear close-up while talking; no complex hand motion.")
 _FRAMING_SUFFIX = " Use a slightly wider medium shot with the product and both hands fully in frame."
 _ALT_TAKE_SUFFIX = " Alternative take: same scene and person, small natural variation in delivery."
+_AUDIO_SUFFIX = " The character speaks the line aloud, clearly and naturally, lips moving with the words."
 
 
-def _first_frame(ctx: PipelineContext, shot: Shot) -> Path | None:
-    """Continuity technique (PRD §14.3): reuse the character reference when one exists."""
-    character = ctx.plan.character
+def _reference_image(character) -> Path | None:
     if character:
         for asset in character.visualReferenceAssets:
             if Path(asset).is_file():
                 return Path(asset)
     return None
+
+
+def _first_frame(ctx: PipelineContext, shot: Shot) -> Path | None:
+    """Continuity technique (PRD §14.3): character reference image as the first frame when one exists."""
+    return _reference_image(ctx.plan.character)
+
+
+def _capture_identity_reference(ctx: PipelineContext, shot: Shot) -> None:
+    """PRD §11.4 / §14.3: one identity source per creative. A character without reference assets gets
+    the mid-frame of the first generated clip; every later shot starts from (and is judged against) it."""
+    plan, character = ctx.plan, ctx.plan.character
+    if not ctx.settings.continuity_reference or character is None or not shot.clipPath:
+        return
+    source = plan.userOverrides.get("identitySourceShot")
+    if _reference_image(character) is not None and source != shot.shotId:
+        return   # library asset, or an earlier shot already provides the identity
+    try:
+        meta = ffprobe_metadata(Path(shot.clipPath))
+        frames = extract_frames(Path(shot.clipPath), ctx.run_dir / "identity", 1, meta["duration_s"])
+    except Exception as exc:  # a missing frame must not stop generation
+        logger.warning("identity frame capture failed for %s: %s", shot.shotId, exc)
+        return
+    if not frames:
+        return
+    reference = ctx.run_dir / "character_reference.jpg"
+    shutil.copy2(frames[0], reference)
+    character.visualReferenceAssets = [str(reference)]
+    plan.userOverrides["identitySourceShot"] = shot.shotId
+    ctx.trace("identity_reference", shot=shot.shotId, path=str(reference))
 
 
 async def _generate_shot(ctx: PipelineContext, shot: Shot) -> None:
@@ -42,11 +71,12 @@ async def _generate_shot(ctx: PipelineContext, shot: Shot) -> None:
             result = await ctx.seedance.generate_to_file(
                 prompt=shot.prompt, out_path=out_path, first_frame_image=_first_frame(ctx, shot),
                 duration_s=max(1, int(round(shot.durationSec))), ratio=settings.aspectRatio,
-                resolution=settings.resolution,
+                resolution=settings.resolution, generate_audio=ctx.settings.generate_audio,
             )
             shot.clipPath = result.video_path
             shot.status = "generated"
-            ctx.trace("shot_generated", shot=shot.shotId, attempt=shot.attempts, clip=result.video_path)
+            ctx.trace("shot_generated", shot=shot.shotId, attempt=shot.attempts, clip=result.video_path,
+                      first_frame=str(_first_frame(ctx, shot) or ""))
             return
         except Exception as exc:
             last_error = exc
@@ -56,6 +86,7 @@ async def _generate_shot(ctx: PipelineContext, shot: Shot) -> None:
 
 
 async def _qc_shot(ctx: PipelineContext, shot: Shot, previous: Shot | None) -> ShotQC:
+    """Rules (timing, audio) + VLM judge (identity / product / continuity / defects / speech), PRD §15.1."""
     plan = ctx.plan
     clip = Path(shot.clipPath or "")
     if not clip.is_file():
@@ -64,32 +95,41 @@ async def _qc_shot(ctx: PipelineContext, shot: Shot, previous: Shot | None) -> S
         meta = ffprobe_metadata(clip)
     except Exception as exc:
         return ShotQC(status="hard_fail", reason=f"unreadable clip: {exc}", repairAction="retry_same_prompt")
-    checks: dict[str, QCCheck] = {}
     if meta["duration_s"] < 0.5:
         return ShotQC(status="hard_fail", reason="empty clip", repairAction="retry_same_prompt")
+    checks: dict[str, QCCheck] = {}
     tolerance = max(1.0, 0.3 * shot.durationSec)
     if abs(meta["duration_s"] - shot.durationSec) > tolerance:
         checks["timing"] = QCCheck(status="warn", reason=f"clip {meta['duration_s']:.1f}s vs planned {shot.durationSec:.1f}s")
     else:
         checks["timing"] = QCCheck(status="pass", reason=f"{meta['duration_s']:.1f}s")
+    if ctx.settings.generate_audio and shot.speech.strip():
+        level = audio_mean_volume_db(clip) if meta["has_audio"] else None
+        if not meta["has_audio"] or (level is not None and level < SILENCE_DB):
+            reason = "no audio track" if not meta["has_audio"] else f"audio nearly silent ({level:.0f} dB)"
+            checks["audio"] = QCCheck(status="fail", reason=reason)
+            return ShotQC(status="soft_fail", checks=checks, repairAction="regenerate_audio",
+                          reason=f"no audible speech: {reason}")
+        checks["audio"] = QCCheck(status="pass", reason=f"mean volume {level:.0f} dB" if level is not None else "audio present")
     frames = extract_frames(clip, ctx.frames_dir / clip.stem, 3, meta["duration_s"])
     references: list[str] = []
+    reference_image = _reference_image(plan.character)
+    if reference_image and str(reference_image) not in frames:
+        references.append(str(reference_image))
     if previous and previous.clipPath:
-        references += sorted(str(p) for p in (ctx.frames_dir / Path(previous.clipPath).stem).glob("frame_*.jpg"))[:2]
-    if plan.character:
-        references += [a for a in plan.character.visualReferenceAssets if Path(a).is_file()][:1]
+        references += sorted(str(p) for p in (ctx.frames_dir / Path(previous.clipPath).stem).glob("frame_*.jpg"))[-1:]
     context = {
         "shotId": shot.shotId, "visualType": shot.visualType, "productVisible": shot.productVisible,
         "speech": shot.speech, "product": plan.product.productName if plan.product else "",
-        "continuityAnchors": shot.continuityAnchors, "candidateFrames": len(frames), "referenceFrames": len(references),
+        "continuityAnchors": shot.continuityAnchors, "candidateFrames": len(frames),
+        "referenceFrames": len(references),
+        "referenceNote": "first reference = character identity source, then last frame of the previous shot" if references else "",
+        "ruleChecks": {k: v.model_dump() for k, v in checks.items()},
     }
     try:
-        reply = await ctx.vision.vision_json(
-            load_prompt("video_qc") + "\n\nContext:\n" + json.dumps(context, ensure_ascii=False),
-            frames + references, purpose="video_qc",
-        )
-        qc = ShotQC.model_validate(reply)
-    except Exception as exc:
+        qc = await call_module(ctx, "video_qc", context, model=ShotQC, image_paths=frames + references,
+                               purpose="video_qc")
+    except StageError as exc:
         plan.warnings.append(f"{shot.shotId}: video QC judge unavailable ({str(exc)[:120]}); clip accepted on rules only")
         qc = ShotQC(status="pass", reason="judge unavailable; rule checks only")
     qc.checks = {**qc.checks, **checks}
@@ -114,6 +154,9 @@ def _apply_repair(shot: Shot, qc: ShotQC) -> None:
     elif action == "replace_clip":
         if _ALT_TAKE_SUFFIX not in shot.prompt:
             shot.prompt += _ALT_TAKE_SUFFIX
+    elif action == "regenerate_audio":
+        if _AUDIO_SUFFIX not in shot.prompt:
+            shot.prompt += _AUDIO_SUFFIX
     shot.status = "planned"
 
 
@@ -131,8 +174,9 @@ class VideoStage(Stage):
         video_qc = VideoQC()
         for round_index in range(settings.maxVideoRepairs + 1):
             plan.status = Status.VIDEO_GENERATING if round_index == 0 else Status.REPAIRING
-            for shot in pending:
+            for shot in sorted(pending, key=plan.shotPlan.index):
                 await _generate_shot(ctx, shot)
+                _capture_identity_reference(ctx, shot)
             ctx.checkpoint(f"video_gen_r{round_index}")
             plan.status = Status.VIDEO_QC
             failed: list[Shot] = []
@@ -141,6 +185,10 @@ class VideoStage(Stage):
                     continue
                 previous = plan.shotPlan[index - 1] if index > 0 else None
                 qc = await _qc_shot(ctx, shot, previous)
+                if qc.status == "soft_fail" and qc.repairAction in ACCEPT_IN_EDIT and settings.allowJumpCuts:
+                    shot.repairHistory.append(f"attempt {shot.attempts}: accepted, resolved in edit ({qc.repairAction})")
+                    qc.status = "pass"
+                    qc.reason = f"accepted via {qc.repairAction}: {qc.reason}"
                 shot.qc = qc
                 video_qc.shots[shot.shotId] = qc
                 shot.status = "passed" if qc.status == "pass" else "failed"
@@ -148,9 +196,7 @@ class VideoStage(Stage):
                     failed.append(shot)
                 ctx.trace("shot_qc", shot=shot.shotId, status=qc.status, action=qc.repairAction, reason=qc.reason[:200])
             video_qc.repairRounds = round_index
-            if not failed:
-                break
-            if round_index == settings.maxVideoRepairs:
+            if not failed or round_index == settings.maxVideoRepairs:
                 break
             for shot in failed:
                 _apply_repair(shot, shot.qc or ShotQC())
@@ -178,13 +224,15 @@ class AssemblerStage(Stage):
         for shot in plan.shotPlan:
             if not shot.clipPath or not Path(shot.clipPath).is_file():
                 raise StageError(f"{shot.shotId} has no clip to assemble")
-            trim = shot.durationSec + 1.0 if (shot.qc and shot.qc.repairAction == "trim_boundary") else None
+            trim = max(shot.speechSec + 0.6, 1.0) if (shot.qc and shot.qc.repairAction == "trim_boundary") else None
             dst = ctx.clips_dir / f"{shot.shotId}_norm.mp4"
             normalized.append(await asyncio.to_thread(normalize_clip, Path(shot.clipPath), dst, settings.aspectRatio, trim))
         final = await asyncio.to_thread(concat_clips, normalized, ctx.run_dir / "final.mp4")
         meta = ffprobe_metadata(final)
         plan.finalVideo = str(final)
-        ctx.trace("assembled", clips=len(normalized), duration_s=meta["duration_s"])
+        ctx.trace("assembled", clips=len(normalized), duration_s=meta["duration_s"], has_audio=meta["has_audio"])
         target = settings.targetDurationSec
         if abs(meta["duration_s"] - target) > 0.35 * target:
             plan.warnings.append(f"final video is {meta['duration_s']:.1f}s for a {target}s target")
+        if ctx.settings.generate_audio and not meta["has_audio"]:
+            plan.warnings.append("final video has no audio track")

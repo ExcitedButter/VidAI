@@ -84,10 +84,11 @@ class SeedanceClient:
         ratio: str = "adaptive",
         resolution: str = "1080p",
         watermark: bool = False,
+        generate_audio: bool = False,
     ) -> SeedanceResult:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         if self.mock:
-            return self._mock_generate(prompt, out_path, duration_s, ratio)
+            return self._mock_generate(prompt, out_path, duration_s, ratio, generate_audio)
 
         assert self._client is not None
         text = (
@@ -163,26 +164,24 @@ class SeedanceClient:
                         fh.write(chunk)
 
     def _mock_generate(
-        self, prompt: str, out_path: Path, duration_s: int, ratio: str
+        self, prompt: str, out_path: Path, duration_s: int, ratio: str, generate_audio: bool = False
     ) -> SeedanceResult:
         width, height = _RATIO_TO_SIZE.get(ratio, _RATIO_TO_SIZE["adaptive"])
         digest = hashlib.sha1(prompt.encode()).hexdigest()[:10]
-        cmd = [
-            "ffmpeg", "-y", "-v", "error",
-            "-f", "lavfi",
-            "-i", f"testsrc2=size={width}x{height}:rate=24:duration={max(1, duration_s)}",
-            "-vf", f"drawtext=text='mock seedance {digest}':fontcolor=white:fontsize=28:x=20:y=20",
-            "-pix_fmt", "yuv420p",
-            str(out_path),
-        ]
-        proc = subprocess.run(cmd, capture_output=True, text=True)
-        if proc.returncode != 0:
-            # drawtext needs libfreetype; fall back to plain testsrc if unavailable.
-            cmd_fallback = [c for c in cmd if not c.startswith("drawtext")]
-            cmd_fallback.remove("-vf")
-            proc = subprocess.run(cmd_fallback, capture_output=True, text=True)
-            if proc.returncode != 0:
-                raise RuntimeError(f"mock ffmpeg synth failed: {proc.stderr[:500]}")
+        seconds = max(1, duration_s)
+        inputs = ["-f", "lavfi", "-i", f"testsrc2=size={width}x{height}:rate=24:duration={seconds}"]
+        encode = ["-c:v", "libx264", "-pix_fmt", "yuv420p"]
+        if generate_audio:  # a tone stands in for speech so the audio QC rule sees a non-silent track
+            inputs += ["-f", "lavfi", "-i", f"sine=frequency=440:sample_rate=48000:duration={seconds}"]
+            encode += ["-c:a", "aac", "-shortest"]
+        drawtext = ["-vf", f"drawtext=text='mock seedance {digest}':fontcolor=white:fontsize=28:x=20:y=20"]
+        for extra in (drawtext, []):  # drawtext needs libfreetype; fall back to plain testsrc
+            proc = subprocess.run(["ffmpeg", "-y", "-v", "error", *inputs, *extra, *encode, str(out_path)],
+                                  capture_output=True, text=True)
+            if proc.returncode == 0:
+                break
+        else:
+            raise RuntimeError(f"mock ffmpeg synth failed: {proc.stderr[:500]}")
         return SeedanceResult(
             video_path=str(out_path), task_id=f"mock-{digest}", video_url=None, prompt=prompt
         )
@@ -213,10 +212,11 @@ class SeevioClient(SeedanceClient):
         ratio: str = "adaptive",
         resolution: str = "1080p",
         watermark: bool = False,
+        generate_audio: bool = False,
     ) -> SeedanceResult:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         if self.mock:
-            return self._mock_generate(prompt, out_path, duration_s, ratio)
+            return self._mock_generate(prompt, out_path, duration_s, ratio, generate_audio)
 
         assert self._client is not None
         payload_input: dict[str, Any] = {
@@ -225,7 +225,7 @@ class SeevioClient(SeedanceClient):
             "duration": max(4, min(30, duration_s)),
             "aspect_ratio": ratio,
             "resolution": resolution,
-            "generate_audio": False,
+            "generate_audio": generate_audio,
             "watermark": watermark,
         }
         if first_frame_image is not None:

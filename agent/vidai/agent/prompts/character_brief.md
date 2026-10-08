@@ -7,7 +7,7 @@ clip can reuse them. "Aspirational but attainable": the audience must think "I c
 him", not a runway model. Distinctive features must create pattern interruption without being
 grotesque. Honor the weights.
 
-Input JSON: `{ "product", "audience", "sellingAngle", "weights", "avoid": [] }`
+Input JSON: `{ "product", "audience", "sellingAngle", "weights", "productInteractionNeeds": [], "avoid": [] }`
 
 Output schema:
 {

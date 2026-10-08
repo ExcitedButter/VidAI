@@ -11,3 +11,6 @@ __pycache__/
 
 # separate repository (alicez3/massurge-site-v2), tracked on its own
 web/massurge-site-v2/
+
+# confidential product document (kept local)
+MasSurge_MVP_PRD_v1.0.pdf

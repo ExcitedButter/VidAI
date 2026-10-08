@@ -136,6 +136,9 @@ def rule_checks(plan) -> tuple[dict[str, QCCheck], list[str], list[str]]:
     else:
         checks["beatLength"] = QCCheck(status="pass", reason="every beat fits one clip")
     product_beats = [i for i, b in enumerate(beats) if b.visual.productRequired or b.visual.type in ("hold_product", "wear_or_use_product", "product_close_up", "simple_demo")]
+    if len(beats) > 2 and len(product_beats) == len(beats):
+        # PRD §8.5: never make the character hold the product stiffly the whole time
+        checks["productOveruse"] = QCCheck(status="warn", reason="product on screen in every beat; let at least the hook or payoff breathe")
     if not product_beats:
         checks["productTiming"] = QCCheck(status="fail", reason="the product never appears on screen")
         instructions.append("Add a product reveal (hold_product or product_close_up) to the beat that explains the core benefit")
@@ -158,6 +161,20 @@ class ScriptQCStage(Stage):
     async def run(self, ctx: PipelineContext) -> None:
         plan = ctx.plan
         settings = plan.generationSettings
+        regenerate = plan.userOverrides.pop("regenerateBeats", None)
+        if regenerate:   # beat-level regenerate (PRD §22 P1): fresh take on those beats only, then normal QC
+            repaired = await call_module(
+                ctx, "script_repair",
+                {**_strategy_payload(plan), "speechVisualBeats": plan.speechVisualBeats,
+                 "repairInstructions": [f"Regenerate beats {', '.join(regenerate)} with a fresh take: new wording, "
+                                        "same purpose, same visual plan; copy every other beat unchanged"],
+                 "failedBeatIds": list(regenerate), "wordsPerMinute": settings.wordsPerMinute,
+                 "maxShotSec": settings.maxShotSec},
+                model=_CopyReply,
+            )
+            plan.speechVisualBeats = _align_with_beats(repaired.speechVisualBeats, plan.beats)
+            _recompute_durations(plan.speechVisualBeats, settings.wordsPerMinute)
+            plan.userOverrides["regeneratedBeats"] = list(regenerate)
         qc = ScriptQC()
         for round_index in range(settings.maxScriptRepairs + 1):
             checks, instructions, failed = rule_checks(plan)

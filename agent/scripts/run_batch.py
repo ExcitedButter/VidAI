@@ -26,6 +26,7 @@ from vidai.agent.run_context import slugify_hint  # noqa: E402
 from vidai.agent.single_run import new_plan, run_creative  # noqa: E402
 from vidai.config import VidaiSettings  # noqa: E402
 from vidai.plan import CreativePlan, Status  # noqa: E402
+from vidai.storage.records import compute_metrics  # noqa: E402
 
 
 def _row(plan: CreativePlan, url: str, minutes: float, final_s: float | None, error: str | None = None) -> dict[str, Any]:
@@ -49,6 +50,7 @@ def _row(plan: CreativePlan, url: str, minutes: float, final_s: float | None, er
         "shotAttempts": sum(s.attempts for s in plan.shotPlan),
         "videoQC": vqc.overall if vqc else None, "videoRepairRounds": vqc.repairRounds if vqc else None,
         "finalSec": final_s, "minutes": round(minutes, 1),
+        "metrics": compute_metrics(plan, final_s),
         "warnings": list(plan.warnings), "error": error or plan.error,
         "script": [{"beatId": b.beatId, "type": b.visual.type, "speech": b.speech} for b in plan.speechVisualBeats],
         "why": plan.why_this_creative(),
@@ -61,14 +63,16 @@ def _write_summary(out: Path, rows: list[dict[str, Any]], settings: VidaiSetting
              f"LLM `{'mock' if settings.mock else settings.llm_model}`"
              + (f" (reasoning_effort={settings.llm_reasoning_effort})" if settings.llm_reasoning_effort and not settings.mock else "")
              + f" · video `{'mock' if settings.mock else settings.seedance_model}` · target {settings.target_duration_s}s {settings.aspect_ratio} {settings.resolution}",
-             "", "| product | status | audience | angle | archetype | character | script QC | video QC | final | min |",
-             "|---|---|---|---|---|---|---|---|---|---|"]
+             "", "| product | status | audience | angle | archetype | character | script QC | video QC | final | retry rate | min |",
+             "|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         sqc = f"{r['scriptQC']} ({r['scriptRepairRounds']} rep, {r['scriptEstSec'] or 0:.0f}s)" if r["scriptQC"] else "-"
         vqc = f"{r['videoQC']} ({r['videoRepairRounds']} rep, {r['shots']} shots / {r['shotAttempts']} gens)" if r["videoQC"] else "-"
         final = f"{r['finalSec']:.1f}s" if r["finalSec"] else "-"
+        retry = r["metrics"].get("shotRetryRate")
         lines.append(f"| {r['product'] or r['url']} | {r['status']} | {r['audience'] or '-'} | {r['angleFamily'] or '-'} | "
-                     f"{r['archetype'] or '-'} | {r['character'] or '-'} | {sqc} | {vqc} | {final} | {r['minutes']} |")
+                     f"{r['archetype'] or '-'} | {r['character'] or '-'} | {sqc} | {vqc} | {final} | "
+                     f"{retry if retry is not None else '-'} | {r['minutes']} |")
     for r in rows:
         lines += ["", f"## {r['product'] or r['url']}", "", f"- url: {r['url']}", f"- creative: `{r['creativeId']}` · status **{r['status']}**"]
         if r["error"]:

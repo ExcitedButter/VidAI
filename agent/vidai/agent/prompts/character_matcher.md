@@ -8,8 +8,11 @@ obvious (e.g. the persona would not plausibly use this product). Respect the lik
 constraint: the target audience must want to keep watching this person; distinctive is fine,
 grotesque or off-putting is not. Rank best first.
 
+`productInteractionNeeds` says how this product must be handled on camera (worn, held, applied,
+demoed); a candidate who could not plausibly do that loses points.
+
 Input JSON: `{ "product", "audience", "sellingAngle", "weights": {relatable, aspirational, distinctive},
-               "candidates": [<Character with matchScore>] }`
+               "productInteractionNeeds": [], "candidates": [<Character with matchScore>] }`
 
 Output schema:
 { "ranked": [ { "characterId": "", "matchScore": 0.0, "whyThisPerson": "" } ], "recommendedIndex": 0 }
