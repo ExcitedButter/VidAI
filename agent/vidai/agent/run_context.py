@@ -17,6 +17,15 @@ from vidai.plan import CreativePlan
 PauseCallback = Callable[[CreativePlan, str], Optional[Awaitable[None]]]
 
 
+def slugify_hint(text: str, max_len: int = 40) -> str:
+    """ASCII slug for file names (product name or URL)."""
+    import re
+    import unicodedata
+
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower()[:max_len] or "creative"
+
+
 class PipelineHalt(Exception):
     """Raised from an `on_pause` callback to stop after the current pause point (resume later)."""
 

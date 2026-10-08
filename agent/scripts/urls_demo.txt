@@ -1,0 +1,7 @@
+# Demo product pages for the MasSurge batch (Shopify / JSON-LD pages the scraper reads cleanly)
+https://www.fellowproducts.com/products/stagg-ekg-electric-pour-over-kettle
+https://www.glossier.com/products/boy-brow
+https://www.allbirds.com/products/mens-tree-runners
+https://www.manduka.com/products/prolite-yoga-mat
+https://www.ridgewallet.com/products/aluminum-gunmetal
+https://www.hydroflask.com/32-oz-wide-mouth

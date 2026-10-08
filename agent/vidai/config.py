@@ -51,6 +51,7 @@ class VidaiSettings:
     llm_api_key: str = ""
     llm_model: str = ""
     vlm_model: str = ""
+    llm_reasoning_effort: str = ""   # low|medium|high|xhigh|max for reasoning models; empty = not sent
     # Creative defaults (PRD §16 generationSettings)
     mode: str = "guided"
     target_duration_s: int = 15
@@ -73,7 +74,10 @@ class VidaiSettings:
         load_dotenv()
         data_dir = _env("VIDAI_DATA_DIR")
         llm_base = _env("VIDAI_LLM_BASE_URL", _env("VIDAI_SEEDANCE_BASE_URL", ARK_DEFAULT_BASE_URL))
-        llm_key = _env("VIDAI_LLM_API_KEY", _env("ARK_API_KEY"))
+        # Only reuse the Ark key for the LLM when the LLM endpoint is Ark / BytePlus itself;
+        # never send the video key to a third-party LLM host.
+        same_vendor = any(host in llm_base for host in ("volces.com", "bytepluses.com"))
+        llm_key = _env("VIDAI_LLM_API_KEY") or (_env("ARK_API_KEY") if same_vendor else "")
         llm_model = _env("VIDAI_LLM_MODEL", "doubao-1-5-vision-pro-32k")
         library = _env("VIDAI_CHARACTER_LIBRARY")
         return cls(
@@ -84,6 +88,7 @@ class VidaiSettings:
             llm_api_key=llm_key,
             llm_model=llm_model,
             vlm_model=_env("VIDAI_VLM_MODEL", llm_model),
+            llm_reasoning_effort=_env("VIDAI_REASONING_EFFORT"),
             mode=_env("VIDAI_MODE", "guided"),
             target_duration_s=_env_int("VIDAI_DURATION", 15),
             aspect_ratio=_env("VIDAI_ASPECT", "9:16"),

@@ -47,9 +47,13 @@ class ChatCompletionsProvider:
         vlm_model_id: str | None = None,
         timeout_s: float = 180.0,
         max_retries: int = 3,
+        reasoning_effort: str | None = None,
     ):
         self.model_id = model_id
         self.vlm_model_id = vlm_model_id or model_id
+        # Reasoning models (gpt-6-astra, gpt-5*, o-series): `reasoning_effort` controls thinking
+        # tokens, which are billed as output; "low" is plenty for schema-bound module calls.
+        self.reasoning_effort = reasoning_effort or None
         self._client = httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             headers={"Authorization": f"Bearer {api_key}"},
@@ -103,17 +107,27 @@ class ChatCompletionsProvider:
             ],
             "response_format": {"type": "json_object"},
         }
-        try:
-            data = await self._chat(payload)
-        except httpx.HTTPStatusError as exc:
-            # Endpoints without response_format support: retry once without it.
-            if exc.response is not None and exc.response.status_code == 400:
-                payload.pop("response_format", None)
-                data = await self._chat(payload)
-            else:
-                raise
-        reply = data["choices"][0]["message"].get("content") or ""
+        if self.reasoning_effort:
+            payload["reasoning_effort"] = self.reasoning_effort
+        data = await self._chat_with_param_fallback(payload)
+        choice = data["choices"][0]
+        reply = choice["message"].get("content") or ""
+        if not reply.strip():
+            raise ValueError(f"empty reply (finish_reason={choice.get('finish_reason')}) for {purpose or 'module'}")
         return parse_json_object(reply)
+
+    async def _chat_with_param_fallback(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """A 400 usually means the endpoint rejects an optional parameter; strip and retry once each."""
+        for optional in ("response_format", "reasoning_effort", None):
+            try:
+                return await self._chat(payload)
+            except httpx.HTTPStatusError as exc:
+                if exc.response is None or exc.response.status_code != 400 or optional is None or optional not in payload:
+                    raise
+                logger.warning("400 from %s (%s); retrying without %s", payload.get("model"),
+                               exc.response.text[:200], optional)
+                payload.pop(optional, None)
+        raise RuntimeError("unreachable")
 
     async def vision_json(
         self,

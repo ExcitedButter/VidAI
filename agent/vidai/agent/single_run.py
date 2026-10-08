@@ -34,7 +34,8 @@ def build_clients(settings: VidaiSettings) -> tuple[JsonClient, VisionClient, Se
                                          vlm_model_id=settings.vlm_model)
         else:
             provider = ChatCompletionsProvider(base_url=settings.llm_base_url, api_key=settings.llm_api_key,
-                                               model_id=settings.llm_model, vlm_model_id=settings.vlm_model)
+                                               model_id=settings.llm_model, vlm_model_id=settings.vlm_model,
+                                               reasoning_effort=settings.llm_reasoning_effort)
         vision = provider  # type: ignore[assignment]
     seedance = build_video_client(base_url=settings.seedance_base_url, api_key=settings.ark_api_key,
                                   model=settings.seedance_model, mock=settings.mock)
