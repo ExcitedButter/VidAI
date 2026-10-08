@@ -1,0 +1,114 @@
+"""Environment / runtime configuration for the MasSurge creative pipeline."""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from vidai.plan import GenerationSettings
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+ARK_DEFAULT_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
+
+
+def load_dotenv(path: Path | None = None) -> None:
+    """Minimal .env loader; existing environment variables win."""
+    env_path = path or (REPO_ROOT / ".env")
+    if not env_path.is_file():
+        return
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip("'\"")
+        if key and key not in os.environ and value:
+            os.environ[key] = value
+
+
+def _env(name: str, default: str = "") -> str:
+    return os.environ.get(name, "").strip() or default
+
+
+def _env_int(name: str, default: int) -> int:
+    return int(_env(name, str(default)))
+
+
+def _env_float(name: str, default: float) -> float:
+    return float(_env(name, str(default)))
+
+
+@dataclass(slots=True)
+class VidaiSettings:
+    # Video generation model (Seedance via seevio.ai or Volcano Ark)
+    seedance_model: str = ""
+    seedance_base_url: str = ARK_DEFAULT_BASE_URL
+    ark_api_key: str = ""
+    # Planner / vision LLM: runs the structured-JSON modules and the Video QC judge
+    llm_base_url: str = ""
+    llm_api_key: str = ""
+    llm_model: str = ""
+    vlm_model: str = ""
+    # Creative defaults (PRD §16 generationSettings)
+    mode: str = "guided"
+    target_duration_s: int = 15
+    aspect_ratio: str = "9:16"
+    resolution: str = "720p"
+    max_shot_s: float = 8.0          # stable clip length for the video model (PRD §13.4)
+    hard_max_shot_s: float = 10.0    # never request a longer clip than this
+    min_shot_s: float = 2.0
+    words_per_minute: int = 150
+    max_script_repairs: int = 2
+    max_video_repairs: int = 2
+    schema_repair_retries: int = 2   # PRD §19.1 "schema invalid -> one repair retry"
+    character_library: Path | None = None
+    # Runtime
+    data_dir: Path = field(default_factory=lambda: REPO_ROOT / "data")
+    mock: bool = False
+
+    @classmethod
+    def from_env(cls) -> "VidaiSettings":
+        load_dotenv()
+        data_dir = _env("VIDAI_DATA_DIR")
+        llm_base = _env("VIDAI_LLM_BASE_URL", _env("VIDAI_SEEDANCE_BASE_URL", ARK_DEFAULT_BASE_URL))
+        llm_key = _env("VIDAI_LLM_API_KEY", _env("ARK_API_KEY"))
+        llm_model = _env("VIDAI_LLM_MODEL", "doubao-1-5-vision-pro-32k")
+        library = _env("VIDAI_CHARACTER_LIBRARY")
+        return cls(
+            seedance_model=_env("VIDAI_SEEDANCE_MODEL", "doubao-seedance-2-5-pro"),
+            seedance_base_url=_env("VIDAI_SEEDANCE_BASE_URL", ARK_DEFAULT_BASE_URL),
+            ark_api_key=_env("ARK_API_KEY"),
+            llm_base_url=llm_base,
+            llm_api_key=llm_key,
+            llm_model=llm_model,
+            vlm_model=_env("VIDAI_VLM_MODEL", llm_model),
+            mode=_env("VIDAI_MODE", "guided"),
+            target_duration_s=_env_int("VIDAI_DURATION", 15),
+            aspect_ratio=_env("VIDAI_ASPECT", "9:16"),
+            resolution=_env("VIDAI_RESOLUTION", "720p"),
+            max_shot_s=_env_float("VIDAI_MAX_SHOT_SEC", 8.0),
+            hard_max_shot_s=_env_float("VIDAI_HARD_MAX_SHOT_SEC", 10.0),
+            min_shot_s=_env_float("VIDAI_MIN_SHOT_SEC", 2.0),
+            words_per_minute=_env_int("VIDAI_WPM", 150),
+            max_script_repairs=_env_int("VIDAI_MAX_SCRIPT_REPAIRS", 2),
+            max_video_repairs=_env_int("VIDAI_MAX_VIDEO_REPAIRS", 2),
+            schema_repair_retries=_env_int("VIDAI_SCHEMA_REPAIR_RETRIES", 2),
+            character_library=Path(library).expanduser() if library else None,
+            data_dir=Path(data_dir).expanduser() if data_dir else REPO_ROOT / "data",
+            mock=_env("VIDAI_MOCK", "0") in {"1", "true", "yes"},
+        )
+
+    def generation_settings(self) -> GenerationSettings:
+        return GenerationSettings(
+            targetDurationSec=self.target_duration_s,
+            aspectRatio=self.aspect_ratio,
+            resolution=self.resolution,
+            videoModel="mock" if self.mock else self.seedance_model,
+            maxShotSec=self.max_shot_s,
+            minShotSec=self.min_shot_s,
+            wordsPerMinute=self.words_per_minute,
+            maxScriptRepairs=self.max_script_repairs,
+            maxVideoRepairs=self.max_video_repairs,
+        )

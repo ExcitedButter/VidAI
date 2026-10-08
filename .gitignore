@@ -1,0 +1,13 @@
+# secrets — never commit
+.env
+agent/.env
+
+# run artifacts / caches
+agent/data/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+
+# separate repository (alicez3/massurge-site-v2), tracked on its own
+web/massurge-site-v2/
