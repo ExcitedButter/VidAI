@@ -1,9 +1,8 @@
 # vidai
 
-- `agent/` — the agentic product-video generator (Python package `vidai`, tests, config).
-  Run from inside it: `cd agent && python -m vidai.cli generate --image ... --url ... "..."`.
-  Secrets live in `agent/.env` (never commit / upload).
-- `web/` — product-page extraction: `web/extract_product.py <url>` pulls title, price, SKUs,
-  seller, rating, description and images from a TikTok Shop PDP or a brand site into
-  `web/results/<slug>/product.json` + `images/`. `web/results/tt_bissell/` is the BISSELL
-  Little Green example.
+MasSurge MVP creative pipeline — product URL → audience → selling angle → character → Speech + Visual
+script (QC + repair) → shot plan → talking-head clips with speech (local LTX-2.5) → QC + repair → final video.
+
+Everything lives in [`agent/`](agent/) (Python package `vidai`, run commands from inside it); see
+`agent/README.md` for setup, usage and the per-step output layout. Secrets stay in `agent/.env`
+(never committed).

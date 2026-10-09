@@ -156,28 +156,6 @@ class AnthropicProvider:
         return message
 
     # ------------------------------------------------------------------ API
-    async def generate_with_tools(
-        self,
-        system_prompt: str,
-        messages: list[dict[str, Any]],
-        tools: list[dict[str, Any]],
-    ) -> dict[str, Any]:
-        kwargs: dict[str, Any] = {
-            "model": self.model_id,
-            "max_tokens": _MAX_TOKENS,
-            "system": system_prompt,
-            "messages": self._convert_history(messages),
-            "extra_headers": _BETA_HEADERS,
-            "extra_body": _FALLBACKS_BODY,
-        }
-        if tools:
-            kwargs["tools"] = self._convert_tools(tools)
-        response = await self._client.messages.create(**kwargs)
-        if response.stop_reason == "refusal":
-            details = getattr(response, "stop_details", None)
-            raise RuntimeError(f"model refused the request: {details}")
-        return self._to_openai_message(response)
-
     async def complete_json(
         self,
         system_prompt: str,

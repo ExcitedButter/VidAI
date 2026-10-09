@@ -128,8 +128,7 @@ results/rubric/<ts>/                     # evaluate_rubric: rubric.md / rubric.j
 
 No process logs are written by default. `VIDAI_TRACE=1` adds `_trace.jsonl` (every module call,
 QC verdict and status change) to the run folder for debugging; LLM token usage is kept in
-`plan.json` (`usage`) either way. `scripts/migrate_layout.py` converts folders written by older
-versions (stages/, clips/, frames/, trace.jsonl) to this layout.
+`plan.json` (`usage`) either way.
 
 ## Debugging
 
