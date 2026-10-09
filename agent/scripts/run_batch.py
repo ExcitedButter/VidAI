@@ -29,6 +29,29 @@ from vidai.plan import CreativePlan, Status  # noqa: E402
 from vidai.storage.records import compute_metrics  # noqa: E402
 
 
+# GPT-6 Astra list price per 1M tokens (input / output incl. reasoning); override for other models.
+PRICE_IN_PER_M = float(__import__("os").environ.get("VIDAI_LLM_PRICE_IN", "10"))
+PRICE_OUT_PER_M = float(__import__("os").environ.get("VIDAI_LLM_PRICE_OUT", "50"))
+
+
+def llm_usage(trace_path: Path | None) -> dict[str, Any]:
+    """Sum token usage over the trace's module replies and estimate the LLM cost."""
+    calls = prompt = completion = 0
+    if trace_path and trace_path.is_file():
+        for line in trace_path.read_text(encoding="utf-8").splitlines():
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            usage = event.get("usage") if event.get("kind") == "module_reply" else None
+            if usage:
+                calls += 1
+                prompt += int(usage.get("prompt_tokens") or 0)
+                completion += int(usage.get("completion_tokens") or 0)
+    cost = prompt / 1e6 * PRICE_IN_PER_M + completion / 1e6 * PRICE_OUT_PER_M
+    return {"calls": calls, "promptTokens": prompt, "completionTokens": completion, "estCostUsd": round(cost, 3)}
+
+
 def _row(plan: CreativePlan, url: str, minutes: float, final_s: float | None, error: str | None = None) -> dict[str, Any]:
     angle, character, audience = plan.sellingAngle, plan.character, plan.audience
     sqc, vqc = plan.script_qc, plan.video_qc
@@ -63,8 +86,8 @@ def _write_summary(out: Path, rows: list[dict[str, Any]], settings: VidaiSetting
              f"LLM `{'mock' if settings.mock else settings.llm_model}`"
              + (f" (reasoning_effort={settings.llm_reasoning_effort})" if settings.llm_reasoning_effort and not settings.mock else "")
              + f" · video `{'mock' if settings.mock else settings.seedance_model}` · target {settings.target_duration_s}s {settings.aspect_ratio} {settings.resolution}",
-             "", "| product | status | audience | angle | archetype | character | script QC | video QC | final | retry rate | min |",
-             "|---|---|---|---|---|---|---|---|---|---|---|"]
+             "", "| product | status | audience | angle | archetype | character | script QC | video QC | final | retry rate | LLM $ | min |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         sqc = f"{r['scriptQC']} ({r['scriptRepairRounds']} rep, {r['scriptEstSec'] or 0:.0f}s)" if r["scriptQC"] else "-"
         vqc = f"{r['videoQC']} ({r['videoRepairRounds']} rep, {r['shots']} shots / {r['shotAttempts']} gens)" if r["videoQC"] else "-"
@@ -72,7 +95,7 @@ def _write_summary(out: Path, rows: list[dict[str, Any]], settings: VidaiSetting
         retry = r["metrics"].get("shotRetryRate")
         lines.append(f"| {r['product'] or r['url']} | {r['status']} | {r['audience'] or '-'} | {r['angleFamily'] or '-'} | "
                      f"{r['archetype'] or '-'} | {r['character'] or '-'} | {sqc} | {vqc} | {final} | "
-                     f"{retry if retry is not None else '-'} | {r['minutes']} |")
+                     f"{retry if retry is not None else '-'} | {r.get('llmUsage', {}).get('estCostUsd', '-')} | {r['minutes']} |")
     for r in rows:
         lines += ["", f"## {r['product'] or r['url']}", "", f"- url: {r['url']}", f"- creative: `{r['creativeId']}` · status **{r['status']}**"]
         if r["error"]:
@@ -143,12 +166,16 @@ async def main() -> int:
         (out / f"{slug}.plan.json").write_text(plan.to_json(), encoding="utf-8")
         if run_dir and (run_dir / "trace.jsonl").is_file():
             shutil.copy2(run_dir / "trace.jsonl", out / f"{slug}.trace.jsonl")
-        rows.append(_row(plan, url, (time.time() - started) / 60, final_s, error))
+        row = _row(plan, url, (time.time() - started) / 60, final_s, error)
+        row["llmUsage"] = llm_usage(run_dir / "trace.jsonl" if run_dir else None)
+        rows.append(row)
         _write_summary(out, rows, settings)
         r = rows[-1]
+        usage = r["llmUsage"]
         print(f"    -> {r['status']}  angle={r['angleFamily']} archetype={r['archetype']} character={r['character']} "
               f"scriptQC={r['scriptQC']}/{r['scriptRepairRounds']} videoQC={r['videoQC']}/{r['videoRepairRounds']} "
-              f"final={final_s and f'{final_s:.1f}s'}  {r['minutes']} min")
+              f"final={final_s and f'{final_s:.1f}s'}  {r['minutes']} min  LLM {usage['calls']} calls "
+              f"{usage['promptTokens']}+{usage['completionTokens']} tok ≈ ${usage['estCostUsd']}")
         if r["error"]:
             print(f"    error: {r['error']}")
     ready = sum(1 for r in rows if r["status"] == "READY")

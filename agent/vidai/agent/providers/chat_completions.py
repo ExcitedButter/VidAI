@@ -54,6 +54,7 @@ class ChatCompletionsProvider:
         # Reasoning models (gpt-6-astra, gpt-5*, o-series): `reasoning_effort` controls thinking
         # tokens, which are billed as output; "low" is plenty for schema-bound module calls.
         self.reasoning_effort = reasoning_effort or None
+        self.last_usage: dict[str, Any] | None = None
         self._client = httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             headers={"Authorization": f"Bearer {api_key}"},
@@ -110,6 +111,7 @@ class ChatCompletionsProvider:
         if self.reasoning_effort:
             payload["reasoning_effort"] = self.reasoning_effort
         data = await self._chat_with_param_fallback(payload)
+        self.last_usage = data.get("usage")
         choice = data["choices"][0]
         reply = choice["message"].get("content") or ""
         if not reply.strip():

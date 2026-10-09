@@ -155,6 +155,13 @@ class ProductIntelligence(PlanModel):
     multipleProductsOnPage: bool = False
     heroImagePath: Optional[str] = None
 
+    @field_validator("price", mode="before")
+    @classmethod
+    def _price_as_text(cls, value: Any) -> Any:
+        if value is None or value == "":
+            return None
+        return value if isinstance(value, str) else str(value)
+
 
 # ----------------------------------------------------------------------------- Stage B
 class Audience(PlanModel):

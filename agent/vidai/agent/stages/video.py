@@ -9,6 +9,7 @@ from pathlib import Path
 
 from vidai.agent.media import audio_mean_volume_db, concat_clips, extract_frames, ffprobe_metadata, normalize_clip
 from vidai.agent.run_context import PipelineContext
+from vidai.agent.seedance import SeedanceNonRetryable
 from vidai.agent.stages.base import Stage, StageError, call_module
 from vidai.plan import QCCheck, Shot, ShotQC, Status, VideoQC
 
@@ -78,6 +79,9 @@ async def _generate_shot(ctx: PipelineContext, shot: Shot) -> None:
             ctx.trace("shot_generated", shot=shot.shotId, attempt=shot.attempts, clip=result.video_path,
                       first_frame=str(_first_frame(ctx, shot) or ""))
             return
+        except SeedanceNonRetryable as exc:   # credits / auth / bad request: stop immediately
+            ctx.trace("shot_error", shot=shot.shotId, attempt=shot.attempts, error=str(exc)[:300], retryable=False)
+            raise StageError(f"generation failed for {shot.shotId}: {exc}") from exc
         except Exception as exc:
             last_error = exc
             ctx.trace("shot_error", shot=shot.shotId, attempt=shot.attempts, error=str(exc)[:300])

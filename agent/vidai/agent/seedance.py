@@ -23,6 +23,11 @@ from vidai.agent.providers.chat_completions import image_to_data_url
 logger = logging.getLogger(__name__)
 
 _TERMINAL_STATUSES = {"succeeded", "failed", "cancelled", "expired"}
+_NON_RETRYABLE = {400, 401, 402, 403, 404, 422}
+
+
+class SeedanceNonRetryable(RuntimeError):
+    """Payment / auth / request errors: retrying the identical request cannot succeed."""
 
 _RATIO_TO_SIZE = {
     "16:9": (1280, 720),
@@ -110,9 +115,8 @@ class SeedanceClient:
             json={"model": self.model, "content": content},
         )
         if create.status_code >= 400:
-            raise RuntimeError(
-                f"Seedance task create failed ({create.status_code}): {create.text[:500]}"
-            )
+            error_cls = SeedanceNonRetryable if create.status_code in _NON_RETRYABLE else RuntimeError
+            raise error_cls(f"Seedance task create failed ({create.status_code}): {create.text[:500]}")
         task_id = create.json()["id"]
         logger.info("seedance task created: %s", task_id)
 
@@ -243,9 +247,8 @@ class SeevioClient(SeedanceClient):
             json={"model": self.model, "input": payload_input},
         )
         if create.status_code >= 400:
-            raise RuntimeError(
-                f"seevio task create failed ({create.status_code}): {create.text[:500]}"
-            )
+            error_cls = SeedanceNonRetryable if create.status_code in _NON_RETRYABLE else RuntimeError
+            raise error_cls(f"seevio task create failed ({create.status_code}): {create.text[:500]}")
         task_id = create.json()["taskId"]
         logger.info("seevio task created: %s", task_id)
 

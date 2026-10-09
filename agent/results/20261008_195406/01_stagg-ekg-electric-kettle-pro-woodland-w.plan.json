@@ -1,0 +1,928 @@
+{
+  "creativeId": "cr_41824058",
+  "version": 1,
+  "mode": "auto",
+  "createdAt": "2026-10-08T23:54:06+00:00",
+  "productUrl": "https://www.fellowproducts.com/products/stagg-ekg-electric-pour-over-kettle",
+  "productTextFallback": "",
+  "product": {
+    "productName": "Stagg EKG Electric Kettle — Pro / Woodland + Walnut",
+    "brandName": "Fellow",
+    "category": "Electric pour-over kettle",
+    "price": "$199.95",
+    "features": [
+      "Precision gooseneck spout for slow, controlled pouring.",
+      "To-the-degree temperature control from 104°F to 212°F (40°C to 100°C).",
+      "Scheduled heating and adjustable temperature hold for 15, 30, 45, or 60 minutes.",
+      "0.9 L (30 oz) capacity and 1000–1200W heating system.",
+      "Full-color display, control dial, preset brewing temperatures, and built-in brew stopwatch.",
+      "WiFi firmware updates through the EKG Updater app."
+    ],
+    "benefits": [
+      "Take more control of your morning pour-over by choosing your water temperature and pouring at a steady pace.",
+      "Schedule hot water around your routine instead of starting the kettle when you're ready to brew.",
+      "Keep water hot while you take your time brewing.",
+      "Use temperature presets and a built-in timer for guidance when you're learning."
+    ],
+    "claims": [
+      "“The ultimate pour-over kettle, built for precision and control.”",
+      "“Pour-over kettle perfected.”",
+      "1200 watts delivers a quick heat time.",
+      "Maintains the target temperature precisely.",
+      "Precision pour spout supports accurate pouring and even saturation."
+    ],
+    "proofPoints": [
+      "Scraped review data reports a 4.6 rating from 2,225 reviews; the rating scale is not explicitly provided.",
+      "Page lists ETL compliance, FCC certification, CSA certification, and UL compliance.",
+      "Published specifications include a 0.9 L capacity, 40°C–100°C temperature range, and 1000–1200W power rating."
+    ],
+    "useCases": [
+      "Making pour-over coffee at home.",
+      "Scheduling hot water ahead of a morning coffee routine.",
+      "Heating water for tea using preset temperatures.",
+      "Timing pour-over brewing or tea steeping."
+    ],
+    "visualAssets": [
+      "/scratch1/home/zhicao/vidai/agent/data/creatives/cr_41824058/v01/product/images/image_00.png",
+      "/scratch1/home/zhicao/vidai/agent/data/creatives/cr_41824058/v01/product/images/image_01.png",
+      "/scratch1/home/zhicao/vidai/agent/data/creatives/cr_41824058/v01/product/images/image_02.png"
+    ],
+    "brandTone": [
+      "Coffee-enthusiast",
+      "Design-conscious",
+      "Playful",
+      "Welcoming to beginners"
+    ],
+    "positioning": "A precision-focused countertop kettle for making your daily pour-over feel more deliberate and less like guesswork.",
+    "constraints": [
+      "Use only with its electric base; never on a stovetop or induction surface.",
+      "Use fresh, clean water only. Milk or other liquids may scald and will void the warranty.",
+      "Listed electrical configuration is 110–120V with a Type-B plug for the U.S. and Canada.",
+      "The EKG Updater app provides firmware updates, not remote control of the kettle or its settings.",
+      "Studio Edition glass-base and metal-accent details should not be attributed to the selected Pro variant.",
+      "Warranty is described as two years standard with an option to extend; do not imply an unconditional longer warranty."
+    ],
+    "riskFlags": [
+      "Page includes a California Proposition 65 warning but does not provide its specific substance or exposure details.",
+      "The pre-boil feature is described as sanitizing water; do not imply it makes contaminated water safe or guarantees sterilization.",
+      "“Ultimate” and “perfected” are unsupported superiority language, not verified performance conclusions.",
+      "Quick heating and precise temperature maintenance are manufacturer claims; no timed heating test or independent accuracy results are supplied.",
+      "Listed certifications and compliance statements are page-reported, not independently verified.",
+      "Do not treat the reference to world brewing champions as an endorsement or evidence of professional use."
+    ],
+    "confidence": 0.9,
+    "sourceUrl": "https://www.fellowproducts.com/products/stagg-ekg-electric-pour-over-kettle",
+    "sourceNotes": [
+      "Primary product is the selected Stagg EKG Pro / Woodland + Walnut at $199.95.",
+      "The comparison table lists the pour-over model at $179.95; that price is not clearly tied to the selected finish and was not used.",
+      "Page also shows Pro Studio Edition, other kettle comparisons, bundles, and promotional mentions of other products.",
+      "Country-selector entries and page-refresh text in bulletPoints were excluded as scrape noise.",
+      "One review entry contains a parsing error; the separate readable entry supplies the 4.6 rating and 2,225 review count. No individual testimonials were provided.",
+      "No independent performance testing or certification documents were supplied."
+    ],
+    "multipleProductsOnPage": true,
+    "heroImagePath": "/scratch1/home/zhicao/vidai/agent/data/creatives/cr_41824058/v01/product/images/image_00.png"
+  },
+  "audienceCandidates": [
+    {
+      "segmentName": "Home pour-over enthusiasts who want less guesswork",
+      "confidence": 0.95,
+      "demographics": {
+        "age": "",
+        "gender": "",
+        "income": "",
+        "location": "U.S. and Canada electrical markets"
+      },
+      "behaviors": [
+        "Make pour-over coffee at home.",
+        "Pay attention to water temperature and pouring pace.",
+        "Consider premium equipment for a daily coffee ritual."
+      ],
+      "painPoints": [
+        "Guessing water temperature makes brewing feel harder to repeat.",
+        "Struggling to keep a slow, steady pour distracts from enjoying the ritual."
+      ],
+      "desires": [
+        "Choose a water temperature and pour at a controlled pace.",
+        "Feel more confident repeating their preferred morning brew."
+      ],
+      "purchaseTriggers": [
+        "Wanting more control over an existing pour-over routine.",
+        "Precision-focused positioning that addresses temperature and pouring together."
+      ],
+      "objections": [
+        "Whether greater brewing control justifies $199.95.",
+        "Whether their current kettle already meets their needs."
+      ],
+      "currentLife": "Already enjoys home pour-over but wants the process to feel more deliberate and less improvised.",
+      "aspirationalIdentity": "A home coffee enthusiast who brews with intention rather than guesswork.",
+      "aspirationalLifestyle": "A satisfying morning coffee ritual where temperature and pouring feel under control.",
+      "languageStyle": [
+        "Coffee-aware but conversational",
+        "Specific about the morning pour",
+        "Confident without coffee snobbery"
+      ],
+      "evidence": "stated",
+      "reason": "The product explicitly positions itself around precision and control for daily home pour-over."
+    },
+    {
+      "segmentName": "Pour-over beginners seeking a more confident routine",
+      "confidence": 0.85,
+      "demographics": {
+        "age": "",
+        "gender": "",
+        "income": "",
+        "location": "U.S. and Canada electrical markets"
+      },
+      "behaviors": [
+        "Learn to make pour-over at home.",
+        "Look for temperature guidance and a way to time brewing."
+      ],
+      "painPoints": [
+        "Not knowing which water temperature to start with.",
+        "Feeling unsure about brewing timing while learning to pour."
+      ],
+      "desires": [
+        "Have a clear starting point instead of guessing every step.",
+        "Build confidence making their own morning pour-over."
+      ],
+      "purchaseTriggers": [
+        "Starting a home pour-over habit.",
+        "Presets and a built-in stopwatch that offer guidance while learning."
+      ],
+      "objections": [
+        "Spending $199.95 before knowing whether pour-over will become a lasting habit.",
+        "Whether a precision kettle feels too involved for a beginner."
+      ],
+      "currentLife": "Interested in home pour-over but still finding their footing with temperature, timing, and pouring.",
+      "aspirationalIdentity": "Someone who can make a deliberate home brew without feeling like an expert is required.",
+      "aspirationalLifestyle": "An approachable daily coffee ritual that becomes more familiar and enjoyable with practice.",
+      "languageStyle": [
+        "Welcoming and reassuring",
+        "Plain language",
+        "No expert-only jargon"
+      ],
+      "evidence": "stated",
+      "reason": "The supplied benefits explicitly describe temperature presets and a timer as guidance for people who are learning."
+    }
+  ],
+  "audienceIndex": 0,
+  "angleCandidates": [
+    {
+      "angleId": "angle_e7897a86",
+      "angleFamily": "pain_point",
+      "oneLineIdea": "Love pour-over, hate guessing? Choose your water temperature and take control of the pour.",
+      "whyItWorks": "Names the audience's two brewing frustrations, then connects temperature selection and controlled pouring to a more deliberate morning ritual. One clear problem-and-relief story fits 15 seconds.",
+      "targetPainOrDesire": "Less guessing about water temperature and less struggle keeping a slow, steady pour.",
+      "corePromise": "Make your morning pour-over feel more intentional, with temperature and pouring pace under your control.",
+      "proofNeeded": [
+        "Listed to-the-degree temperature control from 104°F to 212°F.",
+        "Listed precision gooseneck spout designed for slow, controlled pouring."
+      ],
+      "visualPotential": "high",
+      "hookPotential": "high",
+      "scores": {
+        "audienceRelevance": 0.98,
+        "emotionalStrength": 0.86,
+        "differentiation": 0.78,
+        "visualPotential": 0.9,
+        "talkingHeadSuitability": 0.96,
+        "hookPotential": 0.92
+      },
+      "score": 0.9
+    },
+    {
+      "angleId": "angle_50ba9b4a",
+      "angleFamily": "contrarian",
+      "oneLineIdea": "Your kettle might already be enough. The $199.95 question is whether you want more control over your pour-over.",
+      "whyItWorks": "Acknowledges the price objection instead of dodging it. Reframes the purchase around choosing temperature and controlling the pour, not a promise that expensive equipment automatically makes better coffee.",
+      "targetPainOrDesire": "Knowing whether more brewing control is worth replacing a kettle that already heats water.",
+      "corePromise": "An upgrade focused on how deliberately you brew, rather than simply getting water hot.",
+      "proofNeeded": [
+        "Selected Stagg EKG Pro / Woodland + Walnut price of $199.95.",
+        "Listed to-the-degree temperature control.",
+        "Listed precision gooseneck spout for slow, controlled pouring."
+      ],
+      "visualPotential": "medium",
+      "hookPotential": "high",
+      "scores": {
+        "audienceRelevance": 0.95,
+        "emotionalStrength": 0.78,
+        "differentiation": 0.88,
+        "visualPotential": 0.72,
+        "talkingHeadSuitability": 0.98,
+        "hookPotential": 0.95
+      },
+      "score": 0.877
+    },
+    {
+      "angleId": "angle_6e08afda",
+      "angleFamily": "aspirational_lifestyle",
+      "oneLineIdea": "Take your time with the pour—not with restarting the kettle.",
+      "whyItWorks": "Connects adjustable temperature hold to a less hurried coffee ritual. The speaker can describe choosing a hold window while a brewing cutaway makes the benefit tangible without promising better-tasting coffee.",
+      "targetPainOrDesire": "A satisfying morning ritual with hot water available while they take their time brewing.",
+      "corePromise": "Keep water hot during your chosen hold window so you can brew at your own pace.",
+      "proofNeeded": [
+        "Listed adjustable temperature hold options of 15, 30, 45, or 60 minutes.",
+        "Provided benefit: keep water hot while you take your time brewing."
+      ],
+      "visualPotential": "medium",
+      "hookPotential": "medium",
+      "scores": {
+        "audienceRelevance": 0.84,
+        "emotionalStrength": 0.88,
+        "differentiation": 0.74,
+        "visualPotential": 0.76,
+        "talkingHeadSuitability": 0.92,
+        "hookPotential": 0.8
+      },
+      "score": 0.823
+    }
+  ],
+  "angleIndex": 0,
+  "scriptStrategy": {
+    "archetype": "pas_proof",
+    "reason": "The angle names a clear frustration and a directly supported solution. Keep agitation brief so the 15-second talking-head video has room to show temperature selection and a controlled pour.",
+    "coreMessage": "Choosing your water temperature and controlling your pour can make your morning pour-over feel more intentional and less like guesswork.",
+    "mainObjection": "Does this offer enough control beyond my current kettle to justify $199.95? Show the specific controls rather than claiming it is worth the price for everyone.",
+    "emotionalDirection": "Move from mild brewing frustration to calm, practical confidence in a familiar morning ritual. Keep Marcus relaxed and conversational, without coffee snobbery or promises of perfect coffee.",
+    "requiredProof": [
+      "Use the listed to-the-degree temperature control from 104°F to 212°F as support; show temperature selection on the display, not an unverified temperature-accuracy test.",
+      "Support the listed precision gooseneck spout with a close-up of a slow, controlled pour. Do not imply independently proven taste improvement."
+    ],
+    "requiredProductMoments": [
+      "0–4 seconds: Establish the selected Stagg EKG Pro in Woodland + Walnut on its electric base beside Marcus as he introduces the brewing frustration.",
+      "4–8 seconds: Keep the kettle visible while explaining the core benefit; show Marcus using its dial to select a water temperature.",
+      "8–12 seconds: Show Marcus holding the kettle naturally by its handle and pouring water over a pour-over brewer, with the spout and stream clearly visible.",
+      "12–15 seconds: Return to Marcus with the kettle visible beside the brewer for the better-routine takeaway and brief CTA."
+    ]
+  },
+  "characterCandidates": [
+    {
+      "characterId": "male_home_cook_01",
+      "name": "Marcus - Weeknight Home Cook",
+      "source": "curated",
+      "visualReferenceAssets": [],
+      "ageRange": "30-38",
+      "presentation": "masculine",
+      "personality": [
+        "calm",
+        "practical",
+        "dry humor"
+      ],
+      "lifestyle": "busy dad who cooks most weeknights",
+      "environment": "small modern kitchen with white counters and warm pendant lights",
+      "wardrobe": "navy crew-neck tee, rolled sleeves, apron off",
+      "voice": "low, relaxed, conversational",
+      "bestForCategories": [
+        "kitchen",
+        "home",
+        "appliances",
+        "coffee",
+        "food",
+        "cleaning"
+      ],
+      "bestForAudiences": [
+        "parents",
+        "home cooks",
+        "apartment dwellers"
+      ],
+      "scores": {
+        "aspiration": 0.55,
+        "distinctiveness": 0.4,
+        "trust": 0.9,
+        "relatability": 0.88
+      },
+      "continuityAnchors": {
+        "face": "square jaw, short dark beard, warm brown eyes",
+        "hair": "short dark hair, slightly tousled",
+        "wardrobe": "navy crew-neck t-shirt",
+        "accessories": "steel wristwatch on left wrist",
+        "environment": "small modern kitchen, white counters, warm pendant lights",
+        "lighting": "warm practical lights, soft fill from the front",
+        "voice": "low, relaxed, conversational"
+      },
+      "matchScore": 0.84,
+      "whyThisPerson": "Marcus’s calm kitchen presence makes a temperature close-up and steady pour feel like an achievable morning ritual, not a coffee masterclass."
+    },
+    {
+      "characterId": "male_tech_desk_01",
+      "name": "Dev - Desk Setup Guy",
+      "source": "curated",
+      "visualReferenceAssets": [],
+      "ageRange": "22-29",
+      "presentation": "masculine",
+      "personality": [
+        "curious",
+        "fast-talking",
+        "opinionated"
+      ],
+      "lifestyle": "remote worker who optimizes his desk setup",
+      "environment": "desk setup with monitor, LED strip and plants, evening",
+      "wardrobe": "black hoodie, clear-frame glasses",
+      "voice": "quick, enthusiastic, slightly nerdy",
+      "bestForCategories": [
+        "consumer electronics",
+        "gadgets",
+        "audio",
+        "productivity",
+        "gaming"
+      ],
+      "bestForAudiences": [
+        "students",
+        "remote workers",
+        "tech enthusiasts"
+      ],
+      "scores": {
+        "aspiration": 0.5,
+        "distinctiveness": 0.7,
+        "trust": 0.78,
+        "relatability": 0.82
+      },
+      "continuityAnchors": {
+        "face": "lean face, clear-frame glasses, short stubble",
+        "hair": "black curly hair, medium length",
+        "wardrobe": "black hoodie",
+        "accessories": "clear-frame glasses, over-ear headphones around the neck",
+        "environment": "desk with ultrawide monitor, warm LED strip, two plants",
+        "lighting": "cool monitor glow plus a warm desk lamp",
+        "voice": "quick, enthusiastic"
+      },
+      "matchScore": 0.588,
+      "whyThisPerson": "Dev’s practical optimization mindset fits taking the guesswork out of brewing, though his electronics-filled desk is less natural for a hot-water pouring demo."
+    },
+    {
+      "characterId": "female_pet_parent_01",
+      "name": "Jess - Golden Retriever Mom",
+      "source": "curated",
+      "visualReferenceAssets": [],
+      "ageRange": "28-40",
+      "presentation": "feminine",
+      "personality": [
+        "upbeat",
+        "honest",
+        "slightly chaotic"
+      ],
+      "lifestyle": "pet parent in a lived-in house, always cleaning up after the dog",
+      "environment": "cozy living room with a beige sofa and a dog bed in frame",
+      "wardrobe": "oversized cream sweater, messy bun",
+      "voice": "warm, animated, real",
+      "bestForCategories": [
+        "pet",
+        "cleaning",
+        "home",
+        "appliances",
+        "family"
+      ],
+      "bestForAudiences": [
+        "pet owners",
+        "families with kids",
+        "homeowners"
+      ],
+      "scores": {
+        "aspiration": 0.45,
+        "distinctiveness": 0.55,
+        "trust": 0.9,
+        "relatability": 0.92
+      },
+      "continuityAnchors": {
+        "face": "round friendly face, rosy cheeks, light makeup",
+        "hair": "auburn hair in a messy bun",
+        "wardrobe": "oversized cream knit sweater",
+        "accessories": "none",
+        "environment": "cozy living room, beige sofa, dog bed visible, afternoon light",
+        "lighting": "soft afternoon window light",
+        "voice": "warm, animated"
+      },
+      "matchScore": 0.673,
+      "whyThisPerson": "Jess brings approachable warmth to wanting a calmer morning, but her pet-focused living-room setting gives this hands-on pour-over story less grounding."
+    }
+  ],
+  "characterIndex": 0,
+  "characterBrief": null,
+  "beats": [
+    {
+      "beatId": "b1",
+      "purpose": "Problem and brief agitation: Marcus introduces the frustration with the Woodland + Walnut kettle visible on its electric base beside him.",
+      "message": "Love pour-over, hate guessing? Temperature, pouring pace—it adds up.",
+      "visualIntent": "lifestyle_talking_head",
+      "productRequired": true,
+      "estimatedDurationSec": 4.0
+    },
+    {
+      "beatId": "b2",
+      "purpose": "Solution and temperature proof: close-up of the Pro display and dial as Marcus makes one simple temperature adjustment. Show selection, not an accuracy test.",
+      "message": "The Stagg EKG Pro lets you choose the temperature, degree by degree.",
+      "visualIntent": "product_close_up",
+      "productRequired": true,
+      "estimatedDurationSec": 4.0
+    },
+    {
+      "beatId": "b3",
+      "purpose": "Pouring proof: tight shot of Marcus holding the handle and making one slow, steady pour over a brewer, with the gooseneck spout and water stream clearly visible.",
+      "message": "And the gooseneck helps you keep the pour slow and controlled.",
+      "visualIntent": "simple_demo",
+      "productRequired": true,
+      "estimatedDurationSec": 4.0
+    },
+    {
+      "beatId": "b4",
+      "purpose": "Better-life takeaway and brief CTA: return to relaxed Marcus with the kettle resting on its base beside the brewer, not in his hands.",
+      "message": "Less guesswork, more intention. Check it out.",
+      "visualIntent": "lifestyle_talking_head",
+      "productRequired": true,
+      "estimatedDurationSec": 3.0
+    }
+  ],
+  "speechVisualBeats": [
+    {
+      "beatId": "b1",
+      "purpose": "Introduce the frustration of guesswork in a familiar pour-over routine.",
+      "speech": "I love pour-over. I could do without the guesswork.",
+      "visual": {
+        "type": "lifestyle_talking_head",
+        "productRequired": true,
+        "action": "Marcus faces the camera in his navy tee, relaxed with a slightly dry smile. The Woodland + Walnut Stagg EKG Pro sits on its electric base beside a pour-over brewer on the white counter. Warm pendant lights and soft front fill establish his kitchen.",
+        "framing": "medium"
+      },
+      "estimatedDurationSec": 4.0
+    },
+    {
+      "beatId": "b2",
+      "purpose": "Show temperature selection as concrete support for less guesswork.",
+      "speech": "With this Stagg EKG Pro, I pick my temperature by degree.",
+      "visual": {
+        "type": "product_close_up",
+        "productRequired": true,
+        "action": "As Marcus speaks off-camera, show his hand turning the base's control dial to adjust the selected temperature by one degree. Keep the actual display legible and the kettle visible on its base. Show selection only, not a temperature-accuracy test.",
+        "framing": "close"
+      },
+      "estimatedDurationSec": 4.8
+    },
+    {
+      "beatId": "b3",
+      "purpose": "Demonstrate a controlled pour as the second part of the same intentional routine.",
+      "speech": "Then this spout helps me pour slow and steady.",
+      "visual": {
+        "type": "simple_demo",
+        "productRequired": true,
+        "action": "Marcus holds the kettle naturally by its handle and slowly pours water over the pour-over brewer. Keep the gooseneck spout, steady stream, and brewer clearly visible while he speaks off-camera.",
+        "framing": "close"
+      },
+      "estimatedDurationSec": 4.0
+    },
+    {
+      "beatId": "b4",
+      "purpose": "Close with the better-routine takeaway and a brief invitation.",
+      "speech": "More intention, less guessing. Take a look.",
+      "visual": {
+        "type": "lifestyle_talking_head",
+        "productRequired": true,
+        "action": "Return to Marcus looking calmly at the camera. The kettle rests on its electric base beside the brewer. He gives a small, understated nod toward the setup.",
+        "framing": "medium"
+      },
+      "estimatedDurationSec": 3.2
+    }
+  ],
+  "shotPlan": [
+    {
+      "shotId": "shot_01",
+      "title": "Introduce the frustration of guesswork in a familiar pour-over routine.",
+      "beatIds": [
+        "b1"
+      ],
+      "durationSec": 4.0,
+      "speechSec": 4.0,
+      "visualType": "hold_product",
+      "productVisible": true,
+      "framing": "medium",
+      "speech": "I love pour-over. I could do without the guesswork.",
+      "prompt": "square jaw, short dark beard, warm brown eyes; short dark hair, slightly tousled; navy crew-neck t-shirt; steel wristwatch on left wrist; small modern kitchen, white counters, warm pendant lights; warm practical lights, soft fill from the front. Photoreal vertical 9:16 creator video, locked medium camera setup showing Marcus's face and the white counter. The Fellow Stagg EKG Pro in Woodland + Walnut rests on its electric base beside a pour-over brewer. Marcus lightly holds its handle without lifting it, faces the camera and gives a relaxed, slightly dry smile. Match the supplied product reference images exactly, including finish, proportions and existing branding. He says: \"I love pour-over. I could do without the guesswork.\" Low, relaxed, conversational delivery with lips synchronized to every word. Natural creator energy, anatomically correct hands, existing product label sharp and legible. No text overlays, captions or invented logos. Preserve this wardrobe, kitchen, lighting and counter arrangement throughout the session.",
+      "continuityAnchors": {
+        "face": "square jaw, short dark beard, warm brown eyes",
+        "hair": "short dark hair, slightly tousled",
+        "wardrobe": "navy crew-neck t-shirt",
+        "accessories": "steel wristwatch on left wrist",
+        "environment": "small modern kitchen, white counters, warm pendant lights",
+        "lighting": "warm practical lights, soft fill from the front",
+        "voice": "low, relaxed, conversational",
+        "actions": "Marcus faces the camera in his navy tee, relaxed with a slightly dry smile. The Woodland + Walnut Stagg EKG Pro sits on its electric base beside a pour-over brewer on the white counter. Warm pendant lights and soft front fill establish his kitchen."
+      },
+      "status": "planned",
+      "clipPath": null,
+      "attempts": 1,
+      "qc": null,
+      "repairHistory": [
+        "planner: 4.0 seconds spoken. Input labels this product-required beat lifestyle_talking_head, which conflicts with the permitted product-shot types. Normalize to hold_product with a light grip on the handle while retaining the scripted medium talking-head composition and kettle on its base."
+      ]
+    },
+    {
+      "shotId": "shot_02",
+      "title": "Show temperature selection as concrete support for less guesswork.",
+      "beatIds": [
+        "b2"
+      ],
+      "durationSec": 4.8,
+      "speechSec": 4.8,
+      "visualType": "product_close_up",
+      "productVisible": true,
+      "framing": "close",
+      "speech": "With this Stagg EKG Pro, I pick my temperature by degree.",
+      "prompt": "square jaw, short dark beard, warm brown eyes; short dark hair, slightly tousled; navy crew-neck t-shirt; steel wristwatch on left wrist; small modern kitchen, white counters, warm pendant lights; warm practical lights, soft fill from the front. Photoreal vertical 9:16 creator video from the same session, one locked close camera setup on the Woodland + Walnut Fellow Stagg EKG Pro and its electric base. Keep the kettle, control dial and actual display clearly visible, with the brewer beside it in the established position. Match the supplied product reference images exactly; do not invent display graphics or branding. Marcus's right hand rests naturally on the control dial without operating it. Hold the close-up while he verbally explains temperature selection. He says: \"With this Stagg EKG Pro, I pick my temperature by degree.\" His voice is low, relaxed and conversational, recorded continuously off-camera; his face and lips are outside the frame. Natural creator energy, anatomically correct hands, sharp and legible existing product label and display. No text overlays, captions or invented logos.",
+      "continuityAnchors": {
+        "face": "square jaw, short dark beard, warm brown eyes",
+        "hair": "short dark hair, slightly tousled",
+        "wardrobe": "navy crew-neck t-shirt",
+        "accessories": "steel wristwatch on left wrist",
+        "environment": "small modern kitchen, white counters, warm pendant lights",
+        "lighting": "warm practical lights, soft fill from the front",
+        "voice": "low, relaxed, conversational",
+        "actions": "As Marcus speaks off-camera, show his hand turning the base's control dial to adjust the selected temperature by one degree. Keep the actual display legible and the kettle visible on its base. Show selection only, not a temperature-accuracy test."
+      },
+      "status": "planned",
+      "clipPath": null,
+      "attempts": 0,
+      "qc": null,
+      "repairHistory": [
+        "planner: 4.8 seconds spoken. Downgrade the precise one-degree animated display change to a static product close-up with verbal explanation to avoid fabricated UI or inconsistent digits. No temperature-accuracy demonstration."
+      ]
+    },
+    {
+      "shotId": "shot_03",
+      "title": "Demonstrate a controlled pour as the second part of the same intentional routine.",
+      "beatIds": [
+        "b3"
+      ],
+      "durationSec": 4.0,
+      "speechSec": 4.0,
+      "visualType": "simple_demo",
+      "productVisible": true,
+      "framing": "close",
+      "speech": "Then this spout helps me pour slow and steady.",
+      "prompt": "square jaw, short dark beard, warm brown eyes; short dark hair, slightly tousled; navy crew-neck t-shirt; steel wristwatch on left wrist; small modern kitchen, white counters, warm pendant lights; warm practical lights, soft fill from the front. Photoreal vertical 9:16 creator video from the same session, one locked close camera setup showing the Woodland + Walnut Fellow Stagg EKG Pro, its gooseneck spout and the pour-over brewer on the established white counter. Match the supplied product reference images exactly. Marcus holds the kettle securely by its handle above the brewer, keeping it upright and still, with the spout clearly silhouetted. No liquid pour or complicated hand movement; visually emphasize the spout while he explains its purpose. The electric base remains beside the brewer. He says: \"Then this spout helps me pour slow and steady.\" Low, relaxed, conversational voice spoken off-camera, with face and lips outside the frame. Natural creator energy, correct hand anatomy and realistic handle grip, existing product label sharp and legible. No text overlays, captions or invented logos.",
+      "continuityAnchors": {
+        "face": "square jaw, short dark beard, warm brown eyes",
+        "hair": "short dark hair, slightly tousled",
+        "wardrobe": "navy crew-neck t-shirt",
+        "accessories": "steel wristwatch on left wrist",
+        "environment": "small modern kitchen, white counters, warm pendant lights",
+        "lighting": "warm practical lights, soft fill from the front",
+        "voice": "low, relaxed, conversational",
+        "actions": "Marcus holds the kettle naturally by its handle and slowly pours water over the pour-over brewer. Keep the gooseneck spout, steady stream, and brewer clearly visible while he speaks off-camera."
+      },
+      "status": "planned",
+      "clipPath": null,
+      "attempts": 0,
+      "qc": null,
+      "repairHistory": [
+        "planner: 4.0 seconds spoken. Retain the scripted simple_demo category but downgrade liquid pouring to hold + close-up + verbal explanation: generated water streams and brewer contact are risky. No live pouring-performance proof is implied."
+      ]
+    },
+    {
+      "shotId": "shot_04",
+      "title": "Close with the better-routine takeaway and a brief invitation.",
+      "beatIds": [
+        "b4"
+      ],
+      "durationSec": 4.0,
+      "speechSec": 3.2,
+      "visualType": "hold_product",
+      "productVisible": true,
+      "framing": "medium",
+      "speech": "More intention, less guessing. Take a look.",
+      "prompt": "square jaw, short dark beard, warm brown eyes; short dark hair, slightly tousled; navy crew-neck t-shirt; steel wristwatch on left wrist; small modern kitchen, white counters, warm pendant lights; warm practical lights, soft fill from the front. Photoreal vertical 9:16 creator video from the same session. Return by jump cut to the exact locked medium camera setup of the opening shot. The Woodland + Walnut Fellow Stagg EKG Pro rests on its electric base beside the brewer in the original counter arrangement. Match the supplied product reference images exactly. Marcus lightly holds the kettle handle without lifting it, looks calmly into the camera and gives a small, understated nod toward the setup. He says: \"More intention, less guessing. Take a look.\" Low, relaxed, conversational delivery, lips synchronized to the words, natural creator energy. Hold his relaxed expression briefly after speaking. Correct hand anatomy; existing product label sharp and legible. No text overlays, captions or invented logos.",
+      "continuityAnchors": {
+        "face": "square jaw, short dark beard, warm brown eyes",
+        "hair": "short dark hair, slightly tousled",
+        "wardrobe": "navy crew-neck t-shirt",
+        "accessories": "steel wristwatch on left wrist",
+        "environment": "small modern kitchen, white counters, warm pendant lights",
+        "lighting": "warm practical lights, soft fill from the front",
+        "voice": "low, relaxed, conversational",
+        "actions": "Return to Marcus looking calmly at the camera. The kettle rests on its electric base beside the brewer. He gives a small, understated nod toward the setup."
+      },
+      "status": "planned",
+      "clipPath": null,
+      "attempts": 0,
+      "qc": null,
+      "repairHistory": [
+        "planner: 3.2 seconds spoken; allow approximately 0.8 seconds of natural ending hold to reach the preferred four-second clip length. Separate from b3 to preserve the deliberate return to medium framing and one setup per shot. Normalize the conflicting product-required lifestyle_talking_head label to hold_product, retaining the kettle on its base."
+      ]
+    }
+  ],
+  "generationSettings": {
+    "targetDurationSec": 15,
+    "aspectRatio": "9:16",
+    "resolution": "720p",
+    "videoModel": "seedance-2-5",
+    "maxShotSec": 8.0,
+    "minShotSec": 4.0,
+    "wordsPerMinute": 150,
+    "maxScriptRepairs": 2,
+    "maxVideoRepairs": 2,
+    "allowJumpCuts": true
+  },
+  "qc": {
+    "script": {
+      "overall": "pass",
+      "checks": {
+        "hookStrength": {
+          "status": "pass",
+          "reason": "The opening immediately identifies pour-over drinkers and introduces relatable tension around guesswork.",
+          "beatIds": [
+            "b1"
+          ]
+        },
+        "singleCoreAngle": {
+          "status": "pass",
+          "reason": "Temperature selection and controlled pouring consistently support one idea: less guesswork in the morning ritual.",
+          "beatIds": [
+            "b1",
+            "b2",
+            "b3",
+            "b4"
+          ]
+        },
+        "audienceFit": {
+          "status": "pass",
+          "reason": "Pour-over, temperature selection, and a steady pour directly address this coffee-aware audience's stated frustrations.",
+          "beatIds": [
+            "b1",
+            "b2",
+            "b3"
+          ]
+        },
+        "characterFit": {
+          "status": "pass",
+          "reason": "The understated frustration and practical demonstration suit Marcus's calm, relaxed kitchen persona.",
+          "beatIds": [
+            "b1",
+            "b2",
+            "b3",
+            "b4"
+          ]
+        },
+        "productTiming": {
+          "status": "pass",
+          "reason": "product first appears at 0s",
+          "beatIds": []
+        },
+        "proofSpecificity": {
+          "status": "pass",
+          "reason": "A visible one-degree selection and slow pour concretely demonstrate the two source-supported controls.",
+          "beatIds": [
+            "b2",
+            "b3"
+          ]
+        },
+        "aspirationalPayoff": {
+          "status": "pass",
+          "reason": "The closing promises a more intentional, less uncertain ritual without promising perfect coffee.",
+          "beatIds": [
+            "b4"
+          ]
+        },
+        "naturalSpeech": {
+          "status": "warn",
+          "reason": "“Pick my temperature by degree” is slightly awkward, while “More intention” sounds more like positioning than casual speech.",
+          "beatIds": [
+            "b2",
+            "b4"
+          ]
+        },
+        "claimSafety": {
+          "status": "pass",
+          "reason": "Claims stay within listed temperature-selection and spout benefits without implying tested accuracy or improved taste.",
+          "beatIds": [
+            "b2",
+            "b3",
+            "b4"
+          ]
+        },
+        "durationFit": {
+          "status": "pass",
+          "reason": "Estimated 16s for 15s target",
+          "beatIds": []
+        },
+        "beatLength": {
+          "status": "pass",
+          "reason": "every beat fits one clip",
+          "beatIds": []
+        },
+        "productOveruse": {
+          "status": "warn",
+          "reason": "product on screen in every beat; let at least the hook or payoff breathe",
+          "beatIds": []
+        }
+      },
+      "repairInstructions": [
+        "Adjust only the temperature-selection phrase in b2 and the payoff phrase in b4 into more natural spoken language, preserving their supported meaning.",
+        "In b1, prioritize Marcus's expression over product emphasis while retaining the strategy-required kettle visibility."
+      ],
+      "estimatedDurationSec": 16.0,
+      "repairRounds": 0,
+      "warnings": []
+    },
+    "video": null
+  },
+  "status": "FAILED",
+  "history": [
+    {
+      "stage": "product_parser",
+      "status": "ANALYZING_PRODUCT",
+      "startedAt": "2026-10-08T23:54:06+00:00",
+      "finishedAt": "2026-10-08T23:54:50+00:00",
+      "ok": true,
+      "note": "44.8s"
+    },
+    {
+      "stage": "audience_analyst",
+      "status": "ANALYZING_PRODUCT",
+      "startedAt": "2026-10-08T23:54:50+00:00",
+      "finishedAt": "2026-10-08T23:55:07+00:00",
+      "ok": true,
+      "note": "16.4s"
+    },
+    {
+      "stage": "angle_strategist",
+      "status": "ANALYZING_PRODUCT",
+      "startedAt": "2026-10-08T23:55:07+00:00",
+      "finishedAt": "2026-10-08T23:55:25+00:00",
+      "ok": true,
+      "note": "17.8s"
+    },
+    {
+      "stage": "character_matcher",
+      "status": "STRATEGY_READY",
+      "startedAt": "2026-10-08T23:55:25+00:00",
+      "finishedAt": "2026-10-08T23:55:31+00:00",
+      "ok": true,
+      "note": "6.0s"
+    },
+    {
+      "stage": "script_router",
+      "status": "SCRIPT_GENERATING",
+      "startedAt": "2026-10-08T23:55:31+00:00",
+      "finishedAt": "2026-10-08T23:55:41+00:00",
+      "ok": true,
+      "note": "9.9s"
+    },
+    {
+      "stage": "beat_planner",
+      "status": "SCRIPT_GENERATING",
+      "startedAt": "2026-10-08T23:55:41+00:00",
+      "finishedAt": "2026-10-08T23:55:49+00:00",
+      "ok": true,
+      "note": "8.7s"
+    },
+    {
+      "stage": "copywriter",
+      "status": "SCRIPT_GENERATING",
+      "startedAt": "2026-10-08T23:55:49+00:00",
+      "finishedAt": "2026-10-08T23:56:02+00:00",
+      "ok": true,
+      "note": "13.2s"
+    },
+    {
+      "stage": "script_qc",
+      "status": "SCRIPT_QC",
+      "startedAt": "2026-10-08T23:56:02+00:00",
+      "finishedAt": "2026-10-08T23:56:16+00:00",
+      "ok": true,
+      "note": "13.8s"
+    },
+    {
+      "stage": "shot_planner",
+      "status": "SHOT_PLANNING",
+      "startedAt": "2026-10-08T23:56:16+00:00",
+      "finishedAt": "2026-10-08T23:56:42+00:00",
+      "ok": true,
+      "note": "25.3s"
+    },
+    {
+      "stage": "video",
+      "status": "SHOT_PLANNING",
+      "startedAt": "2026-10-08T23:56:42+00:00",
+      "finishedAt": "2026-10-08T23:56:51+00:00",
+      "ok": false,
+      "note": "generation failed for shot_01: seevio task create failed (402): {\"error\":{\"code\":\"insufficient_credits\",\"message\":\"Insufficient credits to accept this task.\",\"required\":80,\"available\":0}}"
+    }
+  ],
+  "userOverrides": {},
+  "warnings": [
+    "Several products detected on the page; the primary one was used. Pass a more specific URL if this is wrong."
+  ],
+  "finalVideo": null,
+  "error": "StageError: generation failed for shot_01: seevio task create failed (402): {\"error\":{\"code\":\"insufficient_credits\",\"message\":\"Insufficient credits to accept this task.\",\"required\":80,\"available\":0}}",
+  "audience": {
+    "segmentName": "Home pour-over enthusiasts who want less guesswork",
+    "confidence": 0.95,
+    "demographics": {
+      "age": "",
+      "gender": "",
+      "income": "",
+      "location": "U.S. and Canada electrical markets"
+    },
+    "behaviors": [
+      "Make pour-over coffee at home.",
+      "Pay attention to water temperature and pouring pace.",
+      "Consider premium equipment for a daily coffee ritual."
+    ],
+    "painPoints": [
+      "Guessing water temperature makes brewing feel harder to repeat.",
+      "Struggling to keep a slow, steady pour distracts from enjoying the ritual."
+    ],
+    "desires": [
+      "Choose a water temperature and pour at a controlled pace.",
+      "Feel more confident repeating their preferred morning brew."
+    ],
+    "purchaseTriggers": [
+      "Wanting more control over an existing pour-over routine.",
+      "Precision-focused positioning that addresses temperature and pouring together."
+    ],
+    "objections": [
+      "Whether greater brewing control justifies $199.95.",
+      "Whether their current kettle already meets their needs."
+    ],
+    "currentLife": "Already enjoys home pour-over but wants the process to feel more deliberate and less improvised.",
+    "aspirationalIdentity": "A home coffee enthusiast who brews with intention rather than guesswork.",
+    "aspirationalLifestyle": "A satisfying morning coffee ritual where temperature and pouring feel under control.",
+    "languageStyle": [
+      "Coffee-aware but conversational",
+      "Specific about the morning pour",
+      "Confident without coffee snobbery"
+    ],
+    "evidence": "stated",
+    "reason": "The product explicitly positions itself around precision and control for daily home pour-over."
+  },
+  "sellingAngle": {
+    "angleId": "angle_e7897a86",
+    "angleFamily": "pain_point",
+    "oneLineIdea": "Love pour-over, hate guessing? Choose your water temperature and take control of the pour.",
+    "whyItWorks": "Names the audience's two brewing frustrations, then connects temperature selection and controlled pouring to a more deliberate morning ritual. One clear problem-and-relief story fits 15 seconds.",
+    "targetPainOrDesire": "Less guessing about water temperature and less struggle keeping a slow, steady pour.",
+    "corePromise": "Make your morning pour-over feel more intentional, with temperature and pouring pace under your control.",
+    "proofNeeded": [
+      "Listed to-the-degree temperature control from 104°F to 212°F.",
+      "Listed precision gooseneck spout designed for slow, controlled pouring."
+    ],
+    "visualPotential": "high",
+    "hookPotential": "high",
+    "scores": {
+      "audienceRelevance": 0.98,
+      "emotionalStrength": 0.86,
+      "differentiation": 0.78,
+      "visualPotential": 0.9,
+      "talkingHeadSuitability": 0.96,
+      "hookPotential": 0.92
+    },
+    "score": 0.9
+  },
+  "character": {
+    "characterId": "male_home_cook_01",
+    "name": "Marcus - Weeknight Home Cook",
+    "source": "curated",
+    "visualReferenceAssets": [],
+    "ageRange": "30-38",
+    "presentation": "masculine",
+    "personality": [
+      "calm",
+      "practical",
+      "dry humor"
+    ],
+    "lifestyle": "busy dad who cooks most weeknights",
+    "environment": "small modern kitchen with white counters and warm pendant lights",
+    "wardrobe": "navy crew-neck tee, rolled sleeves, apron off",
+    "voice": "low, relaxed, conversational",
+    "bestForCategories": [
+      "kitchen",
+      "home",
+      "appliances",
+      "coffee",
+      "food",
+      "cleaning"
+    ],
+    "bestForAudiences": [
+      "parents",
+      "home cooks",
+      "apartment dwellers"
+    ],
+    "scores": {
+      "aspiration": 0.55,
+      "distinctiveness": 0.4,
+      "trust": 0.9,
+      "relatability": 0.88
+    },
+    "continuityAnchors": {
+      "face": "square jaw, short dark beard, warm brown eyes",
+      "hair": "short dark hair, slightly tousled",
+      "wardrobe": "navy crew-neck t-shirt",
+      "accessories": "steel wristwatch on left wrist",
+      "environment": "small modern kitchen, white counters, warm pendant lights",
+      "lighting": "warm practical lights, soft fill from the front",
+      "voice": "low, relaxed, conversational"
+    },
+    "matchScore": 0.84,
+    "whyThisPerson": "Marcus’s calm kitchen presence makes a temperature close-up and steady pour feel like an achievable morning ritual, not a coffee masterclass."
+  }
+}

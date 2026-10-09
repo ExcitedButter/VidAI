@@ -71,7 +71,8 @@ async def call_module(
             logger.warning("module %s provider error (attempt %d): %s", prompt_name, attempt, exc)
             await asyncio.sleep(min(2 ** attempt, 10))
             continue
-        ctx.trace("module_reply", module=prompt_name, attempt=attempt, reply=_truncate(reply))
+        ctx.trace("module_reply", module=prompt_name, attempt=attempt, reply=_truncate(reply),
+                  usage=getattr(ctx.llm, "last_usage", None))
         if model is None:
             return reply
         try:
