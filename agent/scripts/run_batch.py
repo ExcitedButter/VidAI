@@ -34,22 +34,13 @@ PRICE_IN_PER_M = float(__import__("os").environ.get("VIDAI_LLM_PRICE_IN", "10"))
 PRICE_OUT_PER_M = float(__import__("os").environ.get("VIDAI_LLM_PRICE_OUT", "50"))
 
 
-def llm_usage(trace_path: Path | None) -> dict[str, Any]:
-    """Sum token usage over the trace's module replies and estimate the LLM cost."""
-    calls = prompt = completion = 0
-    if trace_path and trace_path.is_file():
-        for line in trace_path.read_text(encoding="utf-8").splitlines():
-            try:
-                event = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            usage = event.get("usage") if event.get("kind") == "module_reply" else None
-            if usage:
-                calls += 1
-                prompt += int(usage.get("prompt_tokens") or 0)
-                completion += int(usage.get("completion_tokens") or 0)
+def llm_usage(plan: CreativePlan) -> dict[str, Any]:
+    """LLM calls / tokens accumulated in the plan, priced for the configured model."""
+    usage = plan.usage or {}
+    prompt, completion = int(usage.get("promptTokens", 0)), int(usage.get("completionTokens", 0))
     cost = prompt / 1e6 * PRICE_IN_PER_M + completion / 1e6 * PRICE_OUT_PER_M
-    return {"calls": calls, "promptTokens": prompt, "completionTokens": completion, "estCostUsd": round(cost, 3)}
+    return {"calls": int(usage.get("llmCalls", 0)), "promptTokens": prompt, "completionTokens": completion,
+            "estCostUsd": round(cost, 3)}
 
 
 def _row(plan: CreativePlan, url: str, minutes: float, final_s: float | None, error: str | None = None) -> dict[str, Any]:
@@ -164,10 +155,8 @@ async def main() -> int:
             shutil.copy2(plan.finalVideo, dest)
             final_s = ffprobe_metadata(dest)["duration_s"]
         (out / f"{slug}.plan.json").write_text(plan.to_json(), encoding="utf-8")
-        if run_dir and (run_dir / "trace.jsonl").is_file():
-            shutil.copy2(run_dir / "trace.jsonl", out / f"{slug}.trace.jsonl")
         row = _row(plan, url, (time.time() - started) / 60, final_s, error)
-        row["llmUsage"] = llm_usage(run_dir / "trace.jsonl" if run_dir else None)
+        row["llmUsage"] = llm_usage(plan)
         rows.append(row)
         _write_summary(out, rows, settings)
         r = rows[-1]

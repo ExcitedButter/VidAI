@@ -67,9 +67,6 @@ def write_record(layout: DataLayout, plan: CreativePlan, run_dir: Path) -> Path:
     (record_dir / "plan.json").write_text(plan.to_json(), encoding="utf-8")
     (record_dir / "why_this_creative.json").write_text(
         json.dumps(plan.why_this_creative(), indent=2, ensure_ascii=False), encoding="utf-8")
-    trace = run_dir / "trace.jsonl"
-    if trace.is_file():
-        shutil.copy2(trace, record_dir / "trace.jsonl")
 
     angle, character = plan.sellingAngle, plan.character
     row: dict[str, Any] = {

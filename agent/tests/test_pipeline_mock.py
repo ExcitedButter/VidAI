@@ -35,6 +35,7 @@ PAGE = """<!doctype html><html><head>
 def _settings(tmp_path: Path) -> VidaiSettings:
     settings = VidaiSettings.from_env()
     settings.mock = True
+    settings.trace = True          # tests inspect the debug trace
     settings.data_dir = tmp_path / "data"
     return settings
 
@@ -90,15 +91,31 @@ def test_auto_mode_end_to_end(tmp_path: Path, fixture_page: Path) -> None:
     # Assembly + persistence
     assert plan.finalVideo and Path(plan.finalVideo).is_file() and Path(plan.finalVideo).stat().st_size > 0
     assert (run_dir / "plan.json").is_file()
-    assert len(list((run_dir / "stages").glob("*.json"))) >= 12
-    statuses = {json.loads(line)["status"] for line in (run_dir / "trace.jsonl").read_text().splitlines()}
+    # one clearly named folder per step, each holding that step's own output
+    expected = {
+        "01_product_intelligence": ["scraped.json", "product_intelligence.json"],
+        "02_audience": ["audience_candidates.json"], "03_selling_angles": ["angle_candidates.json"],
+        "04_character": ["character_candidates.json", "character_reference.jpg"],
+        "05_script_strategy": ["script_strategy.json"], "06_script": ["beats.json", "speech_visual_script.json"],
+        "07_script_qc": ["script_qc.json", "round_0_qc.json", "round_1_qc.json"], "08_shot_plan": ["shot_plan.json"],
+        "10_video_qc": ["video_qc.json"], "11_final": ["final.mp4", "why_this_creative.json", "metrics.json"],
+    }
+    for folder, files in expected.items():
+        for name in files:
+            assert (run_dir / folder / name).is_file(), f"{folder}/{name}"
+    clips = sorted(p.name for p in (run_dir / "09_video_generation").glob("shot_*_attempt_*.mp4"))
+    assert len(clips) == len(plan.shotPlan) + 1 and clips[0] == "shot_01_attempt_01.mp4"
+    assert all((run_dir / "10_video_qc" / Path(c).stem / "verdict.json").is_file() for c in clips)
+    assert not (run_dir / "stages").exists() and not (run_dir / "trace.jsonl").exists()
+    assert plan.usage["llmCalls"] > 0
+    statuses = {json.loads(line)["status"] for line in (run_dir / "_trace.jsonl").read_text().splitlines()}
     for status in ("ANALYZING_PRODUCT", "STRATEGY_READY", "CHARACTER_READY", "SCRIPT_GENERATING", "SCRIPT_QC",
                    "SCRIPT_READY", "SHOT_PLANNING", "VIDEO_GENERATING", "VIDEO_QC", "REPAIRING", "READY"):
         assert status in statuses, status
     assert record_dir and (record_dir / "final.mp4").is_file() and (record_dir / "why_this_creative.json").is_file()
     # PRD §11.4 / §14.3: one identity source per creative — the first clip's frame feeds every later shot
     assert plan.character.visualReferenceAssets and Path(plan.character.visualReferenceAssets[0]).is_file()
-    events = [json.loads(line) for line in (run_dir / "trace.jsonl").read_text().splitlines()]
+    events = [json.loads(line) for line in (run_dir / "_trace.jsonl").read_text().splitlines()]
     assert any(e["kind"] == "identity_reference" for e in events)
     generated = [e for e in events if e["kind"] == "shot_generated"]
     assert generated[0]["first_frame"] == "" and all(e["first_frame"] for e in generated[1:])
@@ -252,7 +269,7 @@ def test_regenerate_beats_then_requalify(tmp_path: Path, fixture_page: Path) -> 
     plan, run_dir, _ = _run(plan, settings, start_group=start)
     assert plan.status == Status.READY, plan.error
     assert plan.userOverrides["regeneratedBeats"] == ["b2"] and "regenerateBeats" not in plan.userOverrides
-    modules = [json.loads(l)["module"] for l in (run_dir / "trace.jsonl").read_text().splitlines()
+    modules = [json.loads(l)["module"] for l in (run_dir / "_trace.jsonl").read_text().splitlines()
                if json.loads(l)["kind"] == "module_reply"]
     assert modules[0] == "script_repair" and "beat_planner" not in modules
     assert plan.version == 2 and Path(plan.finalVideo).is_file()

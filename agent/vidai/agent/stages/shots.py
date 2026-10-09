@@ -217,3 +217,4 @@ class ShotPlannerStage(Stage):
             if shot.productVisible and product_visual and product_visual.split()[0].lower() not in shot.prompt.lower():
                 shot.prompt += f" The product is {product_visual}."   # the video model never sees the product
         plan.shotPlan = shots
+        ctx.save_json("shots", "shot_plan.json", shots)

@@ -69,6 +69,7 @@ class BeatPlannerStage(Stage):
             middle.productRequired = True
             middle.visualIntent = "hold_product"
         plan.beats = beats
+        ctx.save_json("script", "beats.json", beats)
 
 
 class CopywriterStage(Stage):
@@ -85,6 +86,16 @@ class CopywriterStage(Stage):
         )
         plan.speechVisualBeats = _align_with_beats(reply.speechVisualBeats, plan.beats)
         _recompute_durations(plan.speechVisualBeats, settings.wordsPerMinute)
+        _save_script(ctx)
+
+
+def _save_script(ctx: PipelineContext) -> None:
+    """06_script/speech_visual_script.json always holds the current (possibly repaired) script."""
+    plan = ctx.plan
+    ctx.save_json("script", "speech_visual_script.json", {
+        "estimatedDurationSec": round(sum(b.estimatedDurationSec for b in plan.speechVisualBeats), 2),
+        "beats": plan.speechVisualBeats,
+    })
 
 
 def _align_with_beats(svb: list[SpeechVisualBeat], beats: list[Beat]) -> list[SpeechVisualBeat]:
@@ -175,6 +186,7 @@ class ScriptQCStage(Stage):
             plan.speechVisualBeats = _align_with_beats(repaired.speechVisualBeats, plan.beats)
             _recompute_durations(plan.speechVisualBeats, settings.wordsPerMinute)
             plan.userOverrides["regeneratedBeats"] = list(regenerate)
+            _save_script(ctx)
         qc = ScriptQC()
         for round_index in range(settings.maxScriptRepairs + 1):
             checks, instructions, failed = rule_checks(plan)
@@ -195,6 +207,7 @@ class ScriptQCStage(Stage):
                 estimatedDurationSec=total, repairRounds=round_index, warnings=qc.warnings,
             )
             ctx.trace("script_qc", round=round_index, overall=qc.overall, failing=failing)
+            ctx.save_json("script_qc", f"round_{round_index}_qc.json", qc)
             if not failing:
                 break
             if round_index == settings.maxScriptRepairs:
@@ -210,4 +223,6 @@ class ScriptQCStage(Stage):
             )
             plan.speechVisualBeats = _align_with_beats(repaired.speechVisualBeats, plan.beats)
             _recompute_durations(plan.speechVisualBeats, settings.wordsPerMinute)
+            _save_script(ctx)
         plan.qc["script"] = qc.model_dump(mode="json")
+        ctx.save_json("script_qc", "script_qc.json", qc)

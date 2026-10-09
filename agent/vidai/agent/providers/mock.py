@@ -84,6 +84,7 @@ class MockProvider:
         self.fail_first_video_qc = fail_first_video_qc
         self._script_qc_calls = 0
         self._video_qc_calls = 0
+        self.last_usage: dict[str, int] | None = None   # fake token counts so usage accounting is exercised
 
     # ------------------------------------------------------------------ JsonClient
     async def complete_json(
@@ -94,6 +95,7 @@ class MockProvider:
         handler = getattr(self, f"_{purpose}", None)
         if handler is None:
             raise ValueError(f"mock provider has no canned reply for module {purpose!r}")
+        self.last_usage = {"prompt_tokens": 400 + len(user_payload) // 4, "completion_tokens": 120}
         return handler(_parse_payload(user_payload))
 
     async def vision_json(self, prompt: str, image_paths: list[str], purpose: str = "") -> dict[str, Any]:

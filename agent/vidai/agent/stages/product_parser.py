@@ -260,3 +260,4 @@ class ProductParserStage(Stage):
             plan.warnings.append("Several products detected on the page; the primary one was used. "
                                  "Pass a more specific URL if this is wrong.")
         plan.product = product
+        ctx.save_json("product", "product_intelligence.json", product)

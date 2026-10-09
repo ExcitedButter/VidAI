@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import time
+from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from vidai.agent.run_context import PipelineContext, PipelineHalt
@@ -137,6 +138,18 @@ class CreativePipeline:
     async def _run_assemble(self) -> None:
         await self._stage(AssemblerStage())
         self._set(Status.READY)
+        from vidai.storage.records import compute_metrics
+
+        plan = self.ctx.plan
+        self.ctx.save_json("final", "why_this_creative.json", plan.why_this_creative())
+        final_s = None
+        try:
+            from vidai.agent.media import ffprobe_metadata
+
+            final_s = ffprobe_metadata(Path(plan.finalVideo))["duration_s"] if plan.finalVideo else None
+        except Exception:
+            final_s = None
+        self.ctx.save_json("final", "metrics.json", compute_metrics(plan, final_s))
 
     # ------------------------------------------------------------------ helpers
     def _set(self, status: Status) -> None:

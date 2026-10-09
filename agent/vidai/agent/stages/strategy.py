@@ -47,6 +47,8 @@ class AudienceStage(Stage):
         for audience in plan.audienceCandidates:
             if not audience.reason:
                 audience.reason = f"{audience.evidence} from the product page"
+        ctx.save_json("audience", "audience_candidates.json",
+                      {"recommendedIndex": plan.audienceIndex, "candidates": plan.audienceCandidates})
 
 
 class AngleStage(Stage):
@@ -74,6 +76,7 @@ class AngleStage(Stage):
             ranked.insert(0, recommended)
         plan.angleCandidates = ranked
         plan.angleIndex = ranked.index(recommended)
+        ctx.save_json("angles", "angle_candidates.json", {"recommendedIndex": plan.angleIndex, "candidates": ranked})
 
 
 _FAMILY_TO_ARCHETYPE = {
@@ -105,3 +108,4 @@ class ScriptRouterStage(Stage):
         if not strategy.coreMessage:
             strategy.coreMessage = angle.corePromise or angle.oneLineIdea
         plan.scriptStrategy = strategy
+        ctx.save_json("strategy", "script_strategy.json", strategy)

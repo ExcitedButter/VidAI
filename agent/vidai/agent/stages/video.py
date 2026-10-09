@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import shutil
 from pathlib import Path
@@ -41,7 +42,7 @@ def _cutaway_frame(ctx: PipelineContext) -> Path | None:
     product = ctx.plan.product
     if product is None or not product.heroImagePath or not Path(product.heroImagePath).is_file():
         return None
-    out = ctx.run_dir / "product_cutaway.jpg"
+    out = ctx.stage_dir("shots") / "product_cutaway.jpg"
     if out.is_file():
         return out
     try:
@@ -72,16 +73,18 @@ def _capture_identity_reference(ctx: PipelineContext, shot: Shot) -> None:
     source = plan.userOverrides.get("identitySourceShot")
     if _reference_image(character) is not None and source != shot.shotId:
         return   # library asset, or an earlier shot already provides the identity
+    tmp = ctx.stage_dir("character") / "_identity_tmp"
     try:
         meta = ffprobe_metadata(Path(shot.clipPath))
-        frames = extract_frames(Path(shot.clipPath), ctx.run_dir / "identity", 1, meta["duration_s"])
+        frames = extract_frames(Path(shot.clipPath), tmp, 1, meta["duration_s"])
     except Exception as exc:  # a missing frame must not stop generation
         logger.warning("identity frame capture failed for %s: %s", shot.shotId, exc)
         return
     if not frames:
         return
-    reference = ctx.run_dir / "character_reference.jpg"
+    reference = ctx.stage_dir("character") / "character_reference.jpg"
     shutil.copy2(frames[0], reference)
+    shutil.rmtree(tmp, ignore_errors=True)
     character.visualReferenceAssets = [str(reference)]
     plan.userOverrides["identitySourceShot"] = shot.shotId
     ctx.trace("identity_reference", shot=shot.shotId, path=str(reference))
@@ -90,7 +93,7 @@ def _capture_identity_reference(ctx: PipelineContext, shot: Shot) -> None:
 async def _generate_shot(ctx: PipelineContext, shot: Shot) -> None:
     settings = ctx.plan.generationSettings
     shot.attempts += 1
-    out_path = ctx.clips_dir / f"{shot.shotId}_a{shot.attempts:02d}.mp4"
+    out_path = ctx.clips_dir / f"{shot.shotId}_attempt_{shot.attempts:02d}.mp4"
     last_error: Exception | None = None
     for attempt in range(3):   # network / API errors: back off, identical request (PRD §19.1)
         try:
@@ -171,6 +174,11 @@ async def _qc_shot(ctx: PipelineContext, shot: Shot, previous: Shot | None) -> S
         plan.warnings.append(f"{shot.shotId}: video QC judge unavailable ({str(exc)[:120]}); clip accepted on rules only")
         qc = ShotQC(status="pass", reason="judge unavailable; rule checks only")
     qc.checks = {**qc.checks, **checks}
+    verdict_dir = ctx.frames_dir / clip.stem
+    verdict_dir.mkdir(parents=True, exist_ok=True)
+    (verdict_dir / "verdict.json").write_text(json.dumps(
+        {"clip": str(clip), "context": context, "references": references, "verdict": qc.model_dump(mode="json")},
+        indent=2, ensure_ascii=False), encoding="utf-8")
     return qc
 
 
@@ -234,7 +242,7 @@ class VideoStage(Stage):
             for shot in sorted(pending, key=plan.shotPlan.index):
                 await _generate_shot(ctx, shot)
                 _capture_identity_reference(ctx, shot)
-            ctx.checkpoint(f"video_gen_r{round_index}")
+            ctx.checkpoint("video")
             plan.status = Status.VIDEO_QC
             failed: list[Shot] = []
             for index, shot in enumerate(plan.shotPlan):
@@ -270,6 +278,7 @@ class VideoStage(Stage):
         video_qc.overall = "fail" if hard else ("warn" if soft else "pass")
         plan.qc["video"] = video_qc.model_dump(mode="json")
         plan.warnings.extend(video_qc.warnings)
+        ctx.save_json("video_qc", "video_qc.json", video_qc)
         if hard:   # PRD §15.3: identity drift / wrong product / severe defects must fail
             raise StageError(f"video QC hard failure on {', '.join(hard)} after {video_qc.repairRounds} repair round(s)")
 
@@ -287,9 +296,10 @@ class AssemblerStage(Stage):
             if not shot.clipPath or not Path(shot.clipPath).is_file():
                 raise StageError(f"{shot.shotId} has no clip to assemble")
             trim = max(shot.speechSec + 0.6, 1.0) if (shot.qc and shot.qc.repairAction == "trim_boundary") else None
-            dst = ctx.clips_dir / f"{shot.shotId}_norm.mp4"
+            dst = ctx.final_dir / "normalized" / f"{shot.shotId}.mp4"
+            dst.parent.mkdir(parents=True, exist_ok=True)
             normalized.append(await asyncio.to_thread(normalize_clip, Path(shot.clipPath), dst, settings.aspectRatio, trim))
-        final = await asyncio.to_thread(concat_clips, normalized, ctx.run_dir / "final.mp4")
+        final = await asyncio.to_thread(concat_clips, normalized, ctx.final_dir / "final.mp4")
         meta = ffprobe_metadata(final)
         plan.finalVideo = str(final)
         ctx.trace("assembled", clips=len(normalized), duration_s=meta["duration_s"], has_audio=meta["has_audio"])

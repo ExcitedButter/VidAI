@@ -83,6 +83,7 @@ def concat_clips(clips: list[Path], dst: Path) -> Path:
          "-c", "copy", "-movflags", "+faststart", str(dst)],
         capture_output=True, text=True,
     )
+    list_path.unlink(missing_ok=True)
     if proc.returncode != 0:
         raise RuntimeError(f"concat failed: {proc.stderr[:400]}")
     return dst

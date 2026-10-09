@@ -451,6 +451,7 @@ class CreativePlan(PlanModel):
     history: list[StageEvent] = Field(default_factory=list)
     userOverrides: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
+    usage: dict[str, int] = Field(default_factory=lambda: {"llmCalls": 0, "promptTokens": 0, "completionTokens": 0})
     finalVideo: Optional[str] = None
     error: Optional[str] = None
 

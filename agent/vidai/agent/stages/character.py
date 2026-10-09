@@ -142,6 +142,9 @@ class CharacterStage(Stage):
             recommended = generated if plan.userOverrides.get("newCharacter") else recommended
         plan.characterCandidates = ranked
         plan.characterIndex = ranked.index(recommended)
+        ctx.save_json("character", "character_candidates.json",
+                      {"recommendedIndex": plan.characterIndex, "weights": weights,
+                       "productInteractionNeeds": needs, "candidates": ranked})
 
     async def _generate_character(self, ctx: PipelineContext, weights: dict[str, float],
                                   needs: list[str]) -> Character:
@@ -157,6 +160,7 @@ class CharacterStage(Stage):
         if not brief.productInteractionNeeds:
             brief.productInteractionNeeds = list(needs)
         plan.characterBrief = CharacterBrief.model_validate(brief.model_dump())
+        ctx.save_json("character", "character_brief.json", brief)
         anchors = dict(brief.continuityAnchors) or {
             "face": brief.visualIdentity.get("face", ""), "hair": brief.visualIdentity.get("hair", ""),
             "wardrobe": brief.style.get("wardrobe", ""), "accessories": brief.style.get("accessories", ""),

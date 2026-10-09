@@ -1,4 +1,22 @@
-"""Per-creative workspace shared by every pipeline stage."""
+"""Per-creative workspace shared by every pipeline stage.
+
+Run directory layout (one folder per pipeline step, in execution order):
+
+    creatives/<creativeId>/vNN/
+      plan.json                      canonical Creative Plan (PRD §16), rewritten after every stage
+      01_product_intelligence/       scraped.json, images/, product_intelligence.json
+      02_audience/                   audience_candidates.json
+      03_selling_angles/             angle_candidates.json
+      04_character/                  character_candidates.json, character_brief.json, character_reference.jpg
+      05_script_strategy/            script_strategy.json
+      06_script/                     beats.json, speech_visual_script.json
+      07_script_qc/                  script_qc.json (+ round_N_qc.json)
+      08_shot_plan/                  shot_plan.json, product_cutaway.jpg
+      09_video_generation/           shot_XX_attempt_YY.mp4
+      10_video_qc/                   video_qc.json, shot_XX_attempt_YY/{frame_*.jpg, verdict.json}
+      11_final/                      final.mp4, normalized/, why_this_creative.json, metrics.json
+      _trace.jsonl                   only when VIDAI_TRACE=1 (debugging)
+"""
 
 from __future__ import annotations
 
@@ -9,12 +27,28 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Optional
 
+from pydantic import BaseModel
+
 from vidai.agent.providers.base import JsonClient, VisionClient
 from vidai.agent.seedance import SeedanceClient
 from vidai.config import VidaiSettings
 from vidai.plan import CreativePlan
 
 PauseCallback = Callable[[CreativePlan, str], Optional[Awaitable[None]]]
+
+STAGE_DIRS: dict[str, str] = {
+    "product": "01_product_intelligence",
+    "audience": "02_audience",
+    "angles": "03_selling_angles",
+    "character": "04_character",
+    "strategy": "05_script_strategy",
+    "script": "06_script",
+    "script_qc": "07_script_qc",
+    "shots": "08_shot_plan",
+    "video": "09_video_generation",
+    "video_qc": "10_video_qc",
+    "final": "11_final",
+}
 
 
 def slugify_hint(text: str, max_len: int = 40) -> str:
@@ -30,6 +64,16 @@ class PipelineHalt(Exception):
     """Raised from an `on_pause` callback to stop after the current pause point (resume later)."""
 
 
+def _jsonable(obj: Any) -> Any:
+    if isinstance(obj, BaseModel):
+        return obj.model_dump(mode="json")
+    if isinstance(obj, dict):
+        return {k: _jsonable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_jsonable(v) for v in obj]
+    return obj
+
+
 @dataclass(slots=True)
 class PipelineContext:
     plan: CreativePlan
@@ -41,47 +85,55 @@ class PipelineContext:
     on_pause: Optional[PauseCallback] = None
     checkpoint_index: int = field(default=0)
 
-    # ---------------------------------------------------------------- dirs
+    # ---------------------------------------------------------------- stage folders
+    def stage_dir(self, key: str) -> Path:
+        directory = self.run_dir / STAGE_DIRS[key]
+        directory.mkdir(parents=True, exist_ok=True)
+        return directory
+
+    def save_json(self, key: str, name: str, payload: Any) -> Path:
+        """Write one stage output as pretty JSON (pydantic models are dumped)."""
+        path = self.stage_dir(key) / name
+        path.write_text(json.dumps(_jsonable(payload), indent=2, ensure_ascii=False), encoding="utf-8")
+        return path
+
     @property
     def product_dir(self) -> Path:
-        return self.run_dir / "product"
+        return self.stage_dir("product")
 
     @property
     def clips_dir(self) -> Path:
-        return self.run_dir / "clips"
+        return self.stage_dir("video")
 
     @property
     def frames_dir(self) -> Path:
-        return self.run_dir / "frames"
+        return self.stage_dir("video_qc")
 
     @property
-    def stages_dir(self) -> Path:
-        return self.run_dir / "stages"
+    def final_dir(self) -> Path:
+        return self.stage_dir("final")
 
     @property
     def plan_path(self) -> Path:
         return self.run_dir / "plan.json"
 
     def ensure_dirs(self) -> None:
-        for directory in (self.run_dir, self.product_dir, self.clips_dir, self.frames_dir, self.stages_dir):
-            directory.mkdir(parents=True, exist_ok=True)
-        if self.checkpoint_index == 0:
-            self.checkpoint_index = len(list(self.stages_dir.glob("*.json")))
+        self.run_dir.mkdir(parents=True, exist_ok=True)
 
     # ---------------------------------------------------------------- trace / checkpoints
     def trace(self, kind: str, **payload: Any) -> None:
+        """Debug trace (VIDAI_TRACE=1): every module call, QC verdict and status change."""
+        if not self.settings.trace:
+            return
         event = {"ts": time.time(), "kind": kind, "status": self.plan.status.value, **payload}
-        with (self.run_dir / "trace.jsonl").open("a", encoding="utf-8") as fh:
+        with (self.run_dir / "_trace.jsonl").open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(event, ensure_ascii=False, default=str) + "\n")
 
-    def checkpoint(self, label: str) -> Path:
-        """Persist the plan after every stage so any step can be inspected / resumed (PRD §17.1)."""
+    def checkpoint(self, label: str = "") -> Path:
+        """Persist the canonical plan after every stage (PRD §16: single source of truth)."""
         self.checkpoint_index += 1
-        text = self.plan.to_json()
-        self.plan_path.write_text(text, encoding="utf-8")
-        path = self.stages_dir / f"{self.checkpoint_index:02d}_{label}.json"
-        path.write_text(text, encoding="utf-8")
-        return path
+        self.plan_path.write_text(self.plan.to_json(), encoding="utf-8")
+        return self.plan_path
 
     async def pause(self, group: str) -> None:
         """Guided-mode pause point: the caller may inspect / override the recommended choice."""
@@ -93,7 +145,7 @@ class PipelineContext:
 
 
 def build_run_dir(creatives_root: Path, plan: CreativePlan) -> Path:
-    """creatives/<creativeId>/vNN — every version keeps its own clips, checkpoints and trace."""
+    """creatives/<creativeId>/vNN — every version keeps its own stage folders."""
     return creatives_root / plan.creativeId / f"v{plan.version:02d}"
 
 

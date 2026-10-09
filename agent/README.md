@@ -101,21 +101,35 @@ python -m vidai.cli generate --mock --mode auto --url tests/fixture_page.html
 
 Exit codes: 0 READY, 1 FAILED, 3 halted at a pause point.
 
-## Data layout
+## Data layout — where every step's output lives
 
 ```
 data/
-├── creatives/<creativeId>/vNN/      # one dir per plan version
-│   ├── plan.json                    # canonical Creative Plan (latest)
-│   ├── stages/NN_<stage>.json       # checkpoint after every stage (inspect / resume any step)
-│   ├── product/{scraped.json,images/}
-│   ├── clips/shot_XX_aYY.mp4        # every generation attempt, *_norm.mp4 normalized
-│   ├── frames/                      # QC keyframes
-│   ├── final.mp4
-│   └── trace.jsonl                  # every module call, QC verdict, status change
-├── records/<creativeId>_vNN/        # READY / FAILED: plan, why_this_creative.json, final.mp4, trace
-└── records_manifest.jsonl
+├── creatives/<creativeId>/vNN/          # one folder per pipeline step, in execution order
+│   ├── plan.json                        # canonical Creative Plan (PRD §16), rewritten after every step
+│   ├── 01_product_intelligence/         # scraped.json, images/, product_intelligence.json   (Stage A)
+│   ├── 02_audience/                     # audience_candidates.json                          (Stage B)
+│   ├── 03_selling_angles/               # angle_candidates.json                             (Stage C)
+│   ├── 04_character/                    # character_candidates.json, character_brief.json,  (Stage G)
+│   │                                    #   character_reference.jpg (identity source for all clips)
+│   ├── 05_script_strategy/              # script_strategy.json                              (Stage D)
+│   ├── 06_script/                       # beats.json, speech_visual_script.json (current)   (Stage E)
+│   ├── 07_script_qc/                    # script_qc.json, round_N_qc.json                   (Stage F)
+│   ├── 08_shot_plan/                    # shot_plan.json, product_cutaway.jpg               (Stage I)
+│   ├── 09_video_generation/             # shot_XX_attempt_YY.mp4 (every attempt)            (Stage J)
+│   ├── 10_video_qc/                     # video_qc.json, shot_XX_attempt_YY/{frame_*.jpg, verdict.json} (Stage K)
+│   └── 11_final/                        # final.mp4, normalized/, why_this_creative.json, metrics.json
+├── records/<creativeId>_vNN/            # finished creatives: plan, why_this_creative, metrics, final.mp4
+├── records_manifest.jsonl
+└── personal_library.json                # characters saved with `save-character`
+results/<batch>/                         # run_batch: summary.md / summary.json, NN_<slug>.mp4 + .plan.json
+results/rubric/<ts>/                     # evaluate_rubric: rubric.md / rubric.json
 ```
+
+No process logs are written by default. `VIDAI_TRACE=1` adds `_trace.jsonl` (every module call,
+QC verdict and status change) to the run folder for debugging; LLM token usage is kept in
+`plan.json` (`usage`) either way. `scripts/migrate_layout.py` converts folders written by older
+versions (stages/, clips/, frames/, trace.jsonl) to this layout.
 
 ## Debugging
 
@@ -127,8 +141,8 @@ data/
   revise-angle re-runs downstream only, beat / shot regeneration, save-character, unreachable
   page → `--product-text`, PRD vocabulary aliases, canonical plan JSON, shot segmentation and
   planner-proposal validation, rule QC.  `PYTHONNOUSERSITE=1 python -m pytest tests/ -q`
-- Every LLM call (payload, reply, schema-repair attempts) is in `trace.jsonl`; every stage output
-  is a checkpoint under `stages/`.
+- Each step's output is a plain JSON file in its numbered folder; `VIDAI_TRACE=1` additionally
+  records every LLM call and QC verdict in `_trace.jsonl`.
 
 ## Layout
 
