@@ -65,7 +65,22 @@ Video backends (by `VIDAI_SEEDANCE_BASE_URL`): **seevio.ai** aggregator (`seedan
 LLM backends (by `VIDAI_LLM_MODEL`): **Claude** (`claude*` → native Messages API) or any
 **OpenAI-compatible** `/chat/completions` endpoint with vision (`VIDAI_LLM_BASE_URL`).
 
-## Usage
+## Web UI (one click)
+
+```bash
+python -m vidai.web --port 8080          # then open http://127.0.0.1:8080
+python -m vidai.web --mock               # offline demo with canned LLM + synthetic clips
+```
+
+Paste a product URL, pick 15 / 30 s and Guided / Auto, press **Generate**. The page follows the
+state machine live: product intelligence → audience + ranked angles (recommended preselected)
+→ character cards → speech + visual script (editable) → shots → final video with download and
+"why this creative". Guided mode pauses at angle, character and script until you press
+**Continue**; on the result page you can switch angle / character, edit the script or
+regenerate one shot — only the downstream steps run again (new version of the same creative).
+Zero extra dependencies (stdlib HTTP server, single HTML page).
+
+## Usage (CLI)
 
 ```bash
 # Guided mode (default): recommended defaults, optional overrides at angle / character / script

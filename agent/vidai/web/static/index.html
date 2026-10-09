@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MasSurge Studio</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --line:#262b35; --text:#e8eaf0; --muted:#9aa3b2; --accent:#6c8cff; --ok:#3ecf8e; --warn:#f2b541; --bad:#ff6b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif; }
+  header { padding:20px 16px 8px; max-width:1100px; margin:0 auto; }
+  header h1 { margin:0; font-size:22px; letter-spacing:.3px; }
+  header p { margin:4px 0 0; color:var(--muted); }
+  main { max-width:1100px; margin:0 auto; padding:8px 16px 48px; display:grid; gap:14px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .panel h2 { margin:0 0 10px; font-size:15px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; }
+  form.gen { display:grid; grid-template-columns:1fr auto auto auto; gap:10px; align-items:center; }
+  input, select, textarea, button { font:inherit; color:var(--text); background:#0f1218; border:1px solid var(--line); border-radius:8px; padding:9px 11px; }
+  textarea { width:100%; min-height:54px; resize:vertical; }
+  button { cursor:pointer; background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  button.secondary { background:transparent; color:var(--text); }
+  button:disabled { opacity:.5; cursor:default; }
+  .status { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .step { padding:4px 9px; border-radius:999px; border:1px solid var(--line); color:var(--muted); font-size:12px; }
+  .step.done { border-color:var(--ok); color:var(--ok); }
+  .step.now { border-color:var(--accent); color:#fff; background:rgba(108,140,255,.18); }
+  .step.failed { border-color:var(--bad); color:var(--bad); }
+  .muted { color:var(--muted); }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px; }
+  .card { border:1px solid var(--line); border-radius:10px; padding:10px 12px; cursor:pointer; }
+  .card.selected { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+  .tag { display:inline-block; font-size:11px; padding:2px 7px; border-radius:999px; background:#232838; color:var(--muted); margin-right:4px; }
+  .tag.rec { background:rgba(62,207,142,.15); color:var(--ok); }
+  .beat { display:grid; grid-template-columns:120px 1fr; gap:8px; align-items:start; margin-bottom:8px; }
+  .beat .meta { font-size:12px; color:var(--muted); padding-top:8px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
+  video { width:100%; max-width:360px; border-radius:10px; background:#000; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .warn { color:var(--warn); } .bad { color:var(--bad); } .ok { color:var(--ok); }
+  .hidden { display:none; }
+  img.thumb { height:84px; border-radius:8px; border:1px solid var(--line); }
+  .history button { margin:0 6px 6px 0; }
+  @media (max-width:720px){ form.gen { grid-template-columns:1fr; } .beat { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>MasSurge Studio</h1>
+  <p>Product URL → audience → selling angle → character → script → talking-head video. Guided mode pauses so you can change the recommended choice.</p>
+</header>
+<main>
+  <section class="panel">
+    <form class="gen" id="gen">
+      <input id="url" placeholder="https://brand.com/products/…" required>
+      <select id="duration"><option value="15">15 s</option><option value="30">30 s</option></select>
+      <select id="mode"><option value="guided">Guided</option><option value="auto">Auto</option></select>
+      <button id="go" type="submit">Generate</button>
+    </form>
+    <details style="margin-top:8px"><summary class="muted">Page blocked? paste the product description</summary>
+      <textarea id="productText" placeholder="Product name, price, features, claims…"></textarea></details>
+    <div class="history" id="history" style="margin-top:10px"></div>
+  </section>
+
+  <section class="panel hidden" id="statusPanel">
+    <h2>Progress <span class="muted" id="elapsed"></span></h2>
+    <div class="status" id="status"></div>
+    <p id="error" class="bad hidden"></p>
+    <div id="pauseBox" class="hidden" style="margin-top:10px"></div>
+  </section>
+
+  <section class="panel hidden" id="product"><h2>Product intelligence</h2><div id="productBody"></div></section>
+  <section class="panel hidden" id="strategy"><h2>Audience &amp; selling angles</h2><div id="strategyBody"></div></section>
+  <section class="panel hidden" id="character"><h2>Character</h2><div id="characterBody" class="cards"></div></section>
+  <section class="panel hidden" id="script"><h2>Script (speech + visual)</h2><div id="scriptBody"></div></section>
+  <section class="panel hidden" id="shots"><h2>Shots</h2><div id="shotsBody"></div></section>
+  <section class="panel hidden" id="final"><h2>Final</h2><div id="finalBody"></div></section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const STATES = ["DRAFT","ANALYZING_PRODUCT","STRATEGY_READY","CHARACTER_READY","SCRIPT_GENERATING","SCRIPT_QC","SCRIPT_READY","SHOT_PLANNING","VIDEO_GENERATING","VIDEO_QC","REPAIRING","READY"];
+let current = null, snap = null, timer = null, selected = {};
+
+async function api(path, body) {
+  const r = await fetch(path, body ? {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)} : undefined);
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+function esc(s){ return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function show(id, on=true){ $(id).classList.toggle("hidden", !on); }
+
+$("gen").addEventListener("submit", async e => {
+  e.preventDefault(); $("go").disabled = true;
+  try {
+    const r = await api("/api/generate", {url: $("url").value, duration: $("duration").value, mode: $("mode").value, productText: $("productText").value});
+    open(r.creativeId);
+  } catch (err) { alert(err.message); } finally { $("go").disabled = false; }
+});
+
+async function loadHistory(){
+  try {
+    const rows = await api("/api/creatives");
+    $("history").innerHTML = rows.length ? rows.map(r => `<button class="secondary" onclick="open('${r.creativeId}')">${esc(r.product || r.creativeId)} · ${esc(r.status)}${r.version>1?' v'+r.version:''}</button>`).join("") : "";
+  } catch {}
+}
+
+function open(id){ current = id; selected = {}; clearInterval(timer); poll(); timer = setInterval(poll, 2000); }
+
+async function poll(){
+  if (!current) return;
+  try { snap = await api(`/api/creative/${current}`); } catch (err) { $("error").textContent = err.message; show("error"); return; }
+  render();
+  if (!snap.running && !snap.pausedAt) { clearInterval(timer); timer = null; loadHistory(); }
+}
+
+function render(){
+  const p = snap.plan, st = p.status;
+  show("statusPanel");
+  $("elapsed").textContent = snap.elapsedSec ? `· ${Math.round(snap.elapsedSec)} s` : "";
+  const idx = STATES.indexOf(st);
+  $("status").innerHTML = STATES.map((s,i) => `<span class="step ${st==="FAILED"? (i<=idx?"failed":"") : (i<idx?"done": i===idx?"now":"")}">${s.replace(/_/g," ").toLowerCase()}</span>`).join("")
+    + (st==="FAILED" ? `<span class="step failed">FAILED</span>` : "");
+  $("error").textContent = p.error || snap.error || ""; show("error", !!(p.error || snap.error));
+  renderPause();
+  renderProduct(p); renderStrategy(p); renderCharacter(p); renderScript(p); renderShots(p); renderFinal(p);
+}
+
+function renderPause(){
+  const box = $("pauseBox"); const g = snap.pausedAt;
+  if (!g) { box.classList.add("hidden"); box.innerHTML=""; return; }
+  const label = {strategy:"Selling angle", character:"Character", script_qc:"Script"}[g] || g;
+  box.innerHTML = `<div class="row"><strong>Paused: review the ${label.toLowerCase()} below (recommended is preselected).</strong>
+     <button onclick="cont()">Continue →</button><button class="secondary" onclick="cont({stop:true})">Stop here</button></div>`;
+  box.classList.remove("hidden");
+}
+async function cont(extra){
+  const body = Object.assign({}, extra || {});
+  const p = snap.plan;
+  if (snap.pausedAt === "strategy" && selected.angleId && selected.angleId !== (p.sellingAngle||{}).angleId) body.angleId = selected.angleId;
+  if (snap.pausedAt === "character" && selected.characterId && selected.characterId !== (p.character||{}).characterId) body.characterId = selected.characterId;
+  if (snap.pausedAt === "script_qc") { const s = editedScript(); if (s) body.script = s; }
+  try { await api(`/api/creative/${current}/continue`, body); if (!timer) timer = setInterval(poll, 2000); poll(); } catch (err) { alert(err.message); }
+}
+
+function renderProduct(p){
+  const pr = p.product; show("product", !!pr); if (!pr) return;
+  $("productBody").innerHTML = `<div class="row">${snap.heroUrl?`<img class="thumb" src="${snap.heroUrl}">`:""}
+    <div><strong>${esc(pr.productName)}</strong> <span class="muted">${esc(pr.brandName)} · ${esc(pr.category)} · ${esc(pr.price||"")}</span>
+    <div class="muted">${esc(pr.visualDescription||"")}</div>
+    <div><span class="tag">confidence ${(pr.confidence||0).toFixed(2)}</span>${(pr.riskFlags||[]).slice(0,3).map(f=>`<span class="tag warn">${esc(f)}</span>`).join("")}</div></div></div>
+    ${(p.warnings||[]).map(w=>`<div class="warn">⚠ ${esc(w)}</div>`).join("")}`;
+}
+
+function renderStrategy(p){
+  show("strategy", !!(p.audience || (p.angleCandidates||[]).length)); if (!p.audience && !(p.angleCandidates||[]).length) return;
+  const a = p.audience; const rec = (p.sellingAngle||{}).angleId; const editable = snap.pausedAt==="strategy" || (!snap.running && p.status==="READY");
+  const chosen = selected.angleId || rec;
+  $("strategyBody").innerHTML = (a ? `<p><strong>${esc(a.segmentName)}</strong> <span class="tag">${esc(a.evidence)}</span><br><span class="muted">${esc(a.reason)}</span></p>` : "")
+    + `<div class="cards">` + (p.angleCandidates||[]).map(x => `<div class="card ${x.angleId===chosen?"selected":""}" onclick="pick('angleId','${x.angleId}')">
+        <div>${x.angleId===rec?'<span class="tag rec">recommended</span>':''}<span class="tag">${esc(x.angleFamily)}</span><span class="tag">${(x.score||0).toFixed(2)}</span></div>
+        <div><strong>${esc(x.oneLineIdea)}</strong></div><div class="muted">${esc(x.whyItWorks)}</div></div>`).join("") + `</div>`
+    + (p.scriptStrategy ? `<p class="muted">Archetype <strong>${esc(p.scriptStrategy.archetype)}</strong> — ${esc(p.scriptStrategy.reason)}</p>` : "")
+    + (editable && p.status==="READY" && chosen!==rec ? `<button onclick="revise({angleId:'${chosen}'})">Regenerate with this angle</button>` : "");
+}
+function renderCharacter(p){
+  const list = p.characterCandidates||[]; show("character", list.length>0); if (!list.length) return;
+  const rec = (p.character||{}).characterId; const chosen = selected.characterId || rec;
+  $("characterBody").innerHTML = list.map(c => `<div class="card ${c.characterId===chosen?"selected":""}" onclick="pick('characterId','${c.characterId}')">
+      <div>${c.characterId===rec?'<span class="tag rec">recommended</span>':''}<span class="tag">${esc(c.source)}</span><span class="tag">match ${(c.matchScore||0).toFixed(2)}</span></div>
+      <div><strong>${esc(c.name)}</strong></div><div class="muted">${esc(c.whyThisPerson)}</div>
+      <div class="muted" style="font-size:12px">aspirational ${(c.scores||{}).aspiration} · relatable ${(c.scores||{}).relatability} · distinctive ${(c.scores||{}).distinctiveness}</div></div>`).join("")
+    + (p.status==="READY" && !snap.running && chosen!==rec ? `<div><button onclick="revise({characterId:'${chosen}'})">Regenerate with this character</button></div>` : "");
+}
+function pick(key, id){ selected[key] = id; render(); }
+
+function renderScript(p){
+  const beats = p.speechVisualBeats||[]; show("script", beats.length>0); if (!beats.length) return;
+  const qc = (p.qc||{}).script; const editable = snap.pausedAt==="script_qc" || (!snap.running && p.status==="READY");
+  $("scriptBody").innerHTML = beats.map((b,i) => `<div class="beat"><div class="meta">${esc(b.beatId)} · ${esc(b.visual.type)}${b.visual.productRequired?" · product":""}<br>${(b.estimatedDurationSec||0).toFixed(1)} s</div>
+      <textarea data-beat="${i}" ${editable?"":"readonly"}>${esc(b.speech)}</textarea></div>`).join("")
+    + (qc ? `<p class="muted">Script QC <span class="${qc.overall==="pass"?"ok":"warn"}">${qc.overall}</span> · est. ${(qc.estimatedDurationSec||0).toFixed(0)} s · ${qc.repairRounds} repair round(s) ·
+        ${Object.entries(qc.checks||{}).filter(([k,v])=>v.status!=="pass").map(([k,v])=>`<span class="${v.status==="fail"?"bad":"warn"}">${k}: ${esc(v.reason)}</span>`).join(" · ")||"all checks pass"}</p>` : "")
+    + (p.status==="READY" && !snap.running ? `<div class="row"><button onclick="reviseScript()">Regenerate video with edited script</button><button class="secondary" onclick="revise({regenerateScript:true})">Rewrite script</button></div>` : "");
+}
+function editedScript(){
+  const beats = snap.plan.speechVisualBeats||[]; let changed = false;
+  const out = beats.map((b,i) => { const t = document.querySelector(`textarea[data-beat="${i}"]`); const speech = t ? t.value : b.speech; if (speech !== b.speech) changed = true; return Object.assign({}, b, {speech}); });
+  return changed ? out : null;
+}
+async function reviseScript(){ const s = editedScript(); if (!s) { alert("No script changes."); return; } revise({script: s}); }
+
+function renderShots(p){
+  const shots = p.shotPlan||[]; show("shots", shots.length>0); if (!shots.length) return;
+  const done = p.status==="READY" && !snap.running;
+  $("shotsBody").innerHTML = `<table><tr><th>shot</th><th>beats</th><th>type</th><th>clip</th><th>status</th><th>attempts</th><th>QC</th>${done?"<th></th>":""}</tr>` +
+    shots.map(s => `<tr><td>${esc(s.shotId)}</td><td>${esc((s.beatIds||[]).join(", "))}</td><td>${esc(s.visualType)}${s.productVisible?" ·product":""}</td><td>${(s.durationSec||0).toFixed(1)} s</td>
+      <td class="${s.status==="passed"?"ok":s.status==="failed"?"warn":""}">${esc(s.status)}</td><td>${s.attempts}</td><td>${s.qc?`<span class="${s.qc.status==="pass"?"ok":"warn"}">${esc(s.qc.status)}</span> <span class="muted">${esc((s.qc.reason||"").slice(0,90))}</span>`:""}</td>
+      ${done?`<td><button class="secondary" onclick="revise({shotIds:['${s.shotId}']})">Regenerate</button></td>`:""}</tr>`).join("") + `</table>`;
+}
+
+function renderFinal(p){
+  const has = !!snap.finalVideoUrl && p.status==="READY"; show("final", has || p.status==="FAILED"); if (!has && p.status!=="FAILED") return;
+  const why = p.why || null;
+  $("finalBody").innerHTML = has ? `<div class="row" style="align-items:flex-start">
+      <video controls src="${snap.finalVideoUrl}?v=${p.version}"></video>
+      <div style="flex:1;min-width:240px">
+        <p><a href="${snap.finalVideoUrl}" download="${esc(p.creativeId)}_v${p.version}.mp4"><button>Download MP4</button></a> <span class="muted">v${p.version} · ${esc(p.creativeId)}</span></p>
+        <p><strong>Why this creative</strong><br>
+          <span class="muted">Audience:</span> ${esc((p.audience||{}).segmentName)} (${esc((p.audience||{}).evidence)})<br>
+          <span class="muted">Angle:</span> ${esc((p.sellingAngle||{}).angleFamily)} — ${esc((p.sellingAngle||{}).oneLineIdea)}<br>
+          <span class="muted">Archetype:</span> ${esc((p.scriptStrategy||{}).archetype)}<br>
+          <span class="muted">Character:</span> ${esc((p.character||{}).name)} — ${esc((p.character||{}).whyThisPerson)}</p>
+        <p class="muted">LLM calls ${(p.usage||{}).llmCalls||0} · ${(p.usage||{}).promptTokens||0}+${(p.usage||{}).completionTokens||0} tokens</p>
+        ${(p.warnings||[]).map(w=>`<div class="warn">⚠ ${esc(w)}</div>`).join("")}
+        <p class="muted">To change a decision: pick another angle or character above, edit the script, or regenerate a shot — only the downstream steps run again.</p>
+      </div></div>`
+    : `<p class="bad">${esc(p.error||"failed")}</p><button onclick="resumeRun()">Retry from the failed step</button>`;
+}
+async function revise(body){ try { const r = await api(`/api/creative/${current}/revise`, body); selected = {}; open(r.creativeId); } catch (err) { alert(err.message); } }
+async function resumeRun(){ try { await api(`/api/creative/${current}/resume`); open(current); } catch (err) { alert(err.message); } }
+loadHistory();
+</script>
+</body>
+</html>
