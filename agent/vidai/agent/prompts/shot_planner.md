@@ -13,6 +13,8 @@ Hard constraints (a plan that breaks one is rejected and the rule proposal is us
   wear_or_use_product, product_close_up or simple_demo, exactly as the visual script says.
 - Cut where the visual type changes or where a deliberate social jump cut helps; do not cut
   mid-thought. Keep wardrobe / environment / lighting identical across shots.
+- The first shot is the hook: it must show the creator's face talking to camera (talking_head,
+  lifestyle_talking_head or hold_product), never a product-only close-up.
 
 What the video model can see: ONLY your prompt text, plus (for some shots) one first-frame
 image. It has never seen the product, the character or any reference picture, so:

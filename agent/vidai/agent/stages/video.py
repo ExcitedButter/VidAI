@@ -188,7 +188,8 @@ def _apply_repair(shot: Shot, qc: ShotQC, ctx: PipelineContext | None = None) ->
         # The generator never saw the product: restate what it looks like; on a second product
         # failure make the shot a close-up cutaway that starts on the real product photo.
         visual = product.visualDescription or product.productName
-        if shot.attempts >= 2 and _cutaway_frame(ctx) is not None and ctx.settings.product_cutaway:
+        is_hook = ctx.plan.shotPlan and ctx.plan.shotPlan[0] is shot
+        if shot.attempts >= 2 and _cutaway_frame(ctx) is not None and ctx.settings.product_cutaway and not is_hook:
             shot.visualType = "product_close_up"
             shot.prompt = template_prompt(shot, ctx.plan.character, product.productName, visual, cutaway=True)
             shot.repairHistory.append(f"attempt {shot.attempts}: product still wrong -> cutaway from the product photo")
@@ -241,6 +242,11 @@ class VideoStage(Stage):
                     continue
                 previous = plan.shotPlan[index - 1] if index > 0 else None
                 qc = await _qc_shot(ctx, shot, previous)
+                if qc.status == "soft_fail" and qc.checks and not any(c.status == "fail" for c in qc.checks.values()):
+                    # PRD §15.3: MVP threshold is "watchable + coherent + creator-like"; warn-only verdicts pass
+                    shot.repairHistory.append(f"attempt {shot.attempts}: accepted with warnings only ({qc.reason[:60]})")
+                    qc.status = "pass"
+                    qc.reason = f"accepted (warnings only): {qc.reason}"
                 if qc.status == "soft_fail" and qc.repairAction in ACCEPT_IN_EDIT and settings.allowJumpCuts:
                     shot.repairHistory.append(f"attempt {shot.attempts}: accepted, resolved in edit ({qc.repairAction})")
                     qc.status = "pass"
