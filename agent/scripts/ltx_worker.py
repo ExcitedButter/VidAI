@@ -105,8 +105,10 @@ class Worker:
             if not image.is_file():
                 raise FileNotFoundError(f"first frame image not found: {image}")
             images.append(ImageConditioningInput(str(image), 0, float(req.get("first_frame_strength") or 1.0)))
+        import torch
+
         started = time.time()
-        with self.lock:
+        with self.lock, torch.inference_mode():   # the CLIs run under inference mode; offloaded weights require it
             self.busy = True
             try:
                 result = self.pipeline(
