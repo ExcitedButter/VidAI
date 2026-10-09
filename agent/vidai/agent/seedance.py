@@ -306,8 +306,15 @@ class SeevioClient(SeedanceClient):
 
 
 def build_video_client(
-    *, base_url: str, api_key: str, model: str, mock: bool = False
+    *, base_url: str, api_key: str, model: str, mock: bool = False, backend: str = "auto",
+    first_frame_strength: float = 1.0,
 ) -> SeedanceClient:
-    """Pick the client implementation from the endpoint host."""
-    cls = SeevioClient if "seevio" in base_url else SeedanceClient
+    """Pick the client: mock, the local open-weights worker (LTX-2.5), seevio, or Ark."""
+    if mock:
+        return SeedanceClient(base_url=base_url, api_key=api_key, model=model, mock=True)
+    if backend == "local" or (backend == "auto" and ("127.0.0.1" in base_url or "localhost" in base_url)):
+        from vidai.agent.video_local import LocalVideoClient
+
+        return LocalVideoClient(base_url=base_url, model=model, first_frame_strength=first_frame_strength)
+    cls = SeevioClient if (backend == "seevio" or (backend == "auto" and "seevio" in base_url)) else SeedanceClient
     return cls(base_url=base_url, api_key=api_key, model=model, mock=mock)

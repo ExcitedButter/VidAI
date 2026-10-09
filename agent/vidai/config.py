@@ -42,10 +42,12 @@ def _env_float(name: str, default: float) -> float:
 
 @dataclass(slots=True)
 class VidaiSettings:
-    # Video generation model (Seedance via seevio.ai or Volcano Ark)
+    # Video generation backend: "local" (LTX-2.5 worker, open weights), "seevio", "ark", or "auto" (by URL)
+    video_backend: str = "auto"
     seedance_model: str = ""
     seedance_base_url: str = ARK_DEFAULT_BASE_URL
     ark_api_key: str = ""
+    first_frame_strength: float = 1.0   # local backend: how hard the identity frame conditions frame 0
     # Planner / vision LLM: runs the structured-JSON modules and the Video QC judge
     llm_base_url: str = ""
     llm_api_key: str = ""
@@ -82,10 +84,16 @@ class VidaiSettings:
         llm_key = _env("VIDAI_LLM_API_KEY") or (_env("ARK_API_KEY") if same_vendor else "")
         llm_model = _env("VIDAI_LLM_MODEL", "doubao-1-5-vision-pro-32k")
         library = _env("VIDAI_CHARACTER_LIBRARY")
+        backend = _env("VIDAI_VIDEO_BACKEND", "auto").lower()
+        video_url = _env("VIDAI_SEEDANCE_BASE_URL", ARK_DEFAULT_BASE_URL)
+        if backend == "local":
+            video_url = _env("VIDAI_LOCAL_VIDEO_URL", "http://127.0.0.1:8765")
         return cls(
-            seedance_model=_env("VIDAI_SEEDANCE_MODEL", "doubao-seedance-2-5-pro"),
-            seedance_base_url=_env("VIDAI_SEEDANCE_BASE_URL", ARK_DEFAULT_BASE_URL),
+            video_backend=backend,
+            seedance_model=_env("VIDAI_SEEDANCE_MODEL", "ltx-2.5-22b-distilled" if backend == "local" else "doubao-seedance-2-5-pro"),
+            seedance_base_url=video_url,
             ark_api_key=_env("ARK_API_KEY"),
+            first_frame_strength=_env_float("VIDAI_FIRST_FRAME_STRENGTH", 1.0),
             llm_base_url=llm_base,
             llm_api_key=llm_key,
             llm_model=llm_model,

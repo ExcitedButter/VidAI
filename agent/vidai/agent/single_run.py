@@ -38,7 +38,8 @@ def build_clients(settings: VidaiSettings) -> tuple[JsonClient, VisionClient, Se
                                                reasoning_effort=settings.llm_reasoning_effort)
         vision = provider  # type: ignore[assignment]
     seedance = build_video_client(base_url=settings.seedance_base_url, api_key=settings.ark_api_key,
-                                  model=settings.seedance_model, mock=settings.mock)
+                                  model=settings.seedance_model, mock=settings.mock,
+                                  backend=settings.video_backend, first_frame_strength=settings.first_frame_strength)
     return provider, vision, seedance
 
 
