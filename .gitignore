@@ -14,3 +14,6 @@ web/massurge-site-v2/
 
 # confidential product document (kept local)
 MasSurge_MVP_PRD_v1.0.pdf
+
+# batch outputs / logs (local only)
+agent/results/
