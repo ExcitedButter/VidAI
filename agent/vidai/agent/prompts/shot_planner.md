@@ -14,9 +14,20 @@ Hard constraints (a plan that breaks one is rejected and the rule proposal is us
 - Cut where the visual type changes or where a deliberate social jump cut helps; do not cut
   mid-thought. Keep wardrobe / environment / lighting identical across shots.
 
+What the video model can see: ONLY your prompt text, plus (for some shots) one first-frame
+image. It has never seen the product, the character or any reference picture, so:
+- Every shot where the product is visible must describe the product in plain visual words
+  from `productVisual` (object type, shape, color, material, distinctive parts) — never write
+  "match the reference images" or rely on the product name alone. Branding text need not be
+  legible; say "label area visible" rather than inventing text.
+- Shots listed in `cutawayShots` start from the real product photo: write them as a product
+  cutaway — the product on a clean surface, a slow push-in or gentle handheld drift, a hand may
+  enter to touch or turn it, no face required — and give the speech as the creator's voice-over:
+  `Voice-over, she says: "..."`.
+
 Prompt rules:
 - Start every prompt with the character's continuity anchors verbatim (face, hair, wardrobe,
-  accessories, environment, lighting) — do not restyle them.
+  accessories, environment, lighting) — do not restyle them (cutaway shots skip the character).
 - Then this shot: framing, what the character does with the product (hand-held, worn, close-up,
   simple demo), and the exact spoken line as `She says: "..."` / `He says: "..."` containing the
   speech of all beats in the shot.
@@ -25,7 +36,8 @@ Prompt rules:
 - If the planned action is risky for a video model, downgrade to hold + close-up + verbal
   explanation and say so in `notes`.
 
-Input JSON: `{ "product", "character", "beats": [ {beatId, purpose, speech, estimatedDurationSec, visual} ],
+Input JSON: `{ "product", "productVisual", "character", "cutawayShots": [shotIds],
+               "beats": [ {beatId, purpose, speech, estimatedDurationSec, visual} ],
                "constraints": {maxShotSec, minShotSec, allowJumpCuts, aspectRatio},
                "proposedShots": [ {shotId, beatIds, speechSec, visualType, productVisible, framing, speech, actions} ] }`
 

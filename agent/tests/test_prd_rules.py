@@ -54,3 +54,29 @@ def test_planner_proposal_is_validated_against_hard_constraints() -> None:
     assert groups_from_proposal([_ShotProposal(beatIds=["b2", "b1"]), _ShotProposal(beatIds=["b3"])], beats, 8)[0] is None  # reordered
     assert groups_from_proposal([_ShotProposal(beatIds=["b1"]), _ShotProposal(beatIds=["b3"])], beats, 8)[0] is None        # b2 dropped
     assert groups_from_proposal([_ShotProposal(beatIds=["b1"]), _ShotProposal(beatIds=["b1", "b2", "b3"])], beats, 8)[0] is None
+
+
+def test_product_visual_and_cutaway_prompts(tmp_path) -> None:
+    import subprocess
+    from vidai.agent.media import compose_on_canvas, ffprobe_metadata
+    from vidai.agent.stages.shots import is_cutaway_shot, template_prompt
+    from vidai.config import VidaiSettings
+    from vidai.plan import ProductIntelligence, Shot
+
+    hero = tmp_path / "hero.png"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=300x400:rate=1:duration=1",
+                    "-frames:v", "1", str(hero)], check=True)
+    product = ProductIntelligence(productName="Stagg EKG", category="kettle", heroImagePath=str(hero),
+                                  visualDescription="a matte black gooseneck kettle with a wooden handle")
+    settings = VidaiSettings()
+    close = Shot(shotId="s1", visualType="product_close_up", productVisible=True, speech="pick a temperature")
+    hold = Shot(shotId="s2", visualType="hold_product", productVisible=True, speech="hi")
+    assert is_cutaway_shot(close, product, settings) and not is_cutaway_shot(hold, product, settings)
+    settings.product_cutaway = False
+    assert not is_cutaway_shot(close, product, settings)
+    cut = template_prompt(close, None, product.productName, product.visualDescription, cutaway=True)
+    assert "Voice-over" in cut and "gooseneck kettle" in cut and "pick a temperature" in cut
+    held = template_prompt(hold, None, product.productName, product.visualDescription)
+    assert "The product is a matte black gooseneck kettle" in held and "reference image" not in held
+    canvas = compose_on_canvas(hero, tmp_path / "cut.jpg", (704, 1280))
+    assert ffprobe_metadata(canvas)["width"] == 704 and ffprobe_metadata(canvas)["height"] == 1280

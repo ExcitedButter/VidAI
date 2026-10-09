@@ -101,3 +101,22 @@ def audio_mean_volume_db(path: Path) -> float | None:
             except ValueError:
                 return None
     return None
+
+
+def compose_on_canvas(src: Path, dst: Path, size: tuple[int, int], fill: float = 0.78) -> Path:
+    """Place a product photo (any aspect, RGBA ok) centered on a neutral canvas of `size` (w, h)."""
+    from PIL import Image, ImageFilter
+
+    width, height = size
+    image = Image.open(src).convert("RGBA")
+    scale = min(width * fill / image.width, height * fill / image.height)
+    product = image.resize((max(1, int(image.width * scale)), max(1, int(image.height * scale))), Image.LANCZOS)
+    # background: blurred, brightened version of the photo itself so the cutaway feels lit like a set
+    background = image.convert("RGB").resize((width, height), Image.LANCZOS).filter(ImageFilter.GaussianBlur(40))
+    background = Image.blend(background, Image.new("RGB", (width, height), (243, 241, 236)), 0.65)
+    x = (width - product.width) // 2
+    y = max(0, int(height * 0.46 - product.height / 2))
+    background.paste(product, (x, y), product)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    background.save(dst, "JPEG", quality=92)
+    return dst

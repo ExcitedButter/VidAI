@@ -126,9 +126,22 @@ def anchor_sentence(character: Character | None) -> str:
     return ", ".join(p for p in parts if p)
 
 
-def template_prompt(shot: Shot, character: Character | None, product_name: str) -> str:
+def is_cutaway_shot(shot: Shot, product, settings) -> bool:
+    """Product close-ups start from the real product photo when one exists (exact SKU on screen)."""
+    return bool(settings.product_cutaway and shot.visualType == "product_close_up" and product
+                and product.heroImagePath and __import__("pathlib").Path(product.heroImagePath).is_file())
+
+
+def template_prompt(shot: Shot, character: Character | None, product_name: str,
+                    product_visual: str = "", cutaway: bool = False) -> str:
     presentation = (character.presentation if character else "").lower()
     pronoun = "She" if presentation.startswith("fem") else ("He" if presentation.startswith("masc") else "They")
+    visual = product_visual or product_name
+    if cutaway:
+        return (f"Product close-up that starts on the real product photo: {visual}, on a clean counter in soft "
+                f"natural light. Slow gentle push-in, slight handheld drift; a hand may enter to touch or turn it. "
+                f"No face needed. Voice-over, {pronoun.lower()} says: \"{shot.speech}\". Photoreal, label area "
+                f"visible, no text overlays, no captions.")
     action = shot.continuityAnchors.get("actions") or {
         "talking_head": "talks straight to the camera",
         "hold_product": f"holds the {product_name} up to the camera and shows it",
@@ -137,9 +150,10 @@ def template_prompt(shot: Shot, character: Character | None, product_name: str) 
         "simple_demo": f"shows one simple use of the {product_name}",
         "lifestyle_talking_head": f"talks to the camera with the {product_name} in frame",
     }.get(shot.visualType, "talks to the camera")
+    product_line = f" The product is {visual}." if shot.productVisible else ""
     return (f"{anchor_sentence(character)}. {shot.framing} shot, single handheld phone camera, creator energy. "
-            f"{pronoun} {action}. {pronoun} says: \"{shot.speech}\". Photoreal, natural skin, correct hand "
-            f"anatomy, product label sharp and legible, lips move with the words, no text overlays, no captions.")
+            f"{pronoun} {action}.{product_line} {pronoun} says: \"{shot.speech}\". Photoreal, natural skin, correct hand "
+            f"anatomy, label area visible, lips move with the words, no text overlays, no captions.")
 
 
 class ShotPlannerStage(Stage):
@@ -156,12 +170,14 @@ class ShotPlannerStage(Stage):
         plan.warnings.extend(warnings)
         character = plan.character
         product_name = plan.product.productName if plan.product else "the product"
+        product_visual = plan.product.visualDescription if plan.product else ""
         shots = fallback
         proposals: dict[tuple[str, ...], _ShotProposal] = {}
         try:
             reply = await call_module(
                 ctx, "shot_planner",
-                {"product": plan.product, "character": character,
+                {"product": plan.product, "productVisual": product_visual, "character": character,
+                 "cutawayShots": [s.shotId for s in fallback if is_cutaway_shot(s, plan.product, ctx.settings)],
                  "beats": [{"beatId": b.beatId, "purpose": b.purpose, "speech": b.speech,
                             "estimatedDurationSec": b.estimatedDurationSec, "visual": b.visual} for b in beats],
                  "constraints": {"maxShotSec": settings.maxShotSec, "minShotSec": settings.minShotSec,
@@ -195,5 +211,9 @@ class ShotPlannerStage(Stage):
                     shot.framing = item.framing
                 if item.notes:
                     shot.repairHistory.append(f"planner: {item.notes}")
-            shot.prompt = (item.prompt.strip() if item and item.prompt.strip() else template_prompt(shot, character, product_name))
+            cutaway = is_cutaway_shot(shot, plan.product, ctx.settings)
+            shot.prompt = (item.prompt.strip() if item and item.prompt.strip()
+                           else template_prompt(shot, character, product_name, product_visual, cutaway))
+            if shot.productVisible and product_visual and product_visual.split()[0].lower() not in shot.prompt.lower():
+                shot.prompt += f" The product is {product_visual}."   # the video model never sees the product
         plan.shotPlan = shots

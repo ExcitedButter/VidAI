@@ -148,6 +148,7 @@ class ProductIntelligence(PlanModel):
     positioning: str = ""
     constraints: list[str] = Field(default_factory=list)
     riskFlags: list[str] = Field(default_factory=list)
+    visualDescription: str = ""   # what the product looks like, for a text-only video generator
     # bookkeeping (PRD §4.4)
     confidence: float = 0.0
     sourceUrl: str = ""

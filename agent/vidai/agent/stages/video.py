@@ -7,7 +7,10 @@ import logging
 import shutil
 from pathlib import Path
 
-from vidai.agent.media import audio_mean_volume_db, concat_clips, extract_frames, ffprobe_metadata, normalize_clip
+from vidai.agent.media import (audio_mean_volume_db, compose_on_canvas, concat_clips, extract_frames,
+                               ffprobe_metadata, normalize_clip)
+from vidai.agent.stages.shots import is_cutaway_shot, template_prompt
+from vidai.agent.video_local import output_size
 from vidai.agent.run_context import PipelineContext
 from vidai.agent.seedance import SeedanceNonRetryable
 from vidai.agent.stages.base import Stage, StageError, call_module
@@ -33,8 +36,30 @@ def _reference_image(character) -> Path | None:
     return None
 
 
+def _cutaway_frame(ctx: PipelineContext) -> Path | None:
+    """The product hero photo composed onto a canvas of the target aspect (first frame for close-ups)."""
+    product = ctx.plan.product
+    if product is None or not product.heroImagePath or not Path(product.heroImagePath).is_file():
+        return None
+    out = ctx.run_dir / "product_cutaway.jpg"
+    if out.is_file():
+        return out
+    try:
+        return compose_on_canvas(Path(product.heroImagePath), out, output_size(ctx.plan.generationSettings.aspectRatio, "720p"))
+    except Exception as exc:  # a broken photo must not block generation
+        logger.warning("cutaway frame failed: %s", exc)
+        return None
+
+
+def _is_cutaway(ctx: PipelineContext, shot: Shot) -> bool:
+    return is_cutaway_shot(shot, ctx.plan.product, ctx.settings) and _cutaway_frame(ctx) is not None
+
+
 def _first_frame(ctx: PipelineContext, shot: Shot) -> Path | None:
-    """Continuity technique (PRD §14.3): character reference image as the first frame when one exists."""
+    """PRD §14.3 continuity: product close-ups start on the real product photo; every other shot
+    starts on the character identity reference when one exists."""
+    if _is_cutaway(ctx, shot):
+        return _cutaway_frame(ctx)
     return _reference_image(ctx.plan.character)
 
 
@@ -42,8 +67,8 @@ def _capture_identity_reference(ctx: PipelineContext, shot: Shot) -> None:
     """PRD §11.4 / §14.3: one identity source per creative. A character without reference assets gets
     the mid-frame of the first generated clip; every later shot starts from (and is judged against) it."""
     plan, character = ctx.plan, ctx.plan.character
-    if not ctx.settings.continuity_reference or character is None or not shot.clipPath:
-        return
+    if not ctx.settings.continuity_reference or character is None or not shot.clipPath or _is_cutaway(ctx, shot):
+        return   # a product cutaway has no face to anchor identity on
     source = plan.userOverrides.get("identitySourceShot")
     if _reference_image(character) is not None and source != shot.shotId:
         return   # library asset, or an earlier shot already provides the identity
@@ -122,12 +147,21 @@ async def _qc_shot(ctx: PipelineContext, shot: Shot, previous: Shot | None) -> S
         references.append(str(reference_image))
     if previous and previous.clipPath:
         references += sorted(str(p) for p in (ctx.frames_dir / Path(previous.clipPath).stem).glob("frame_*.jpg"))[-1:]
+    cutaway = _is_cutaway(ctx, shot)
+    product_photo = _cutaway_frame(ctx) if shot.productVisible else None
+    if product_photo:
+        references.append(str(product_photo))
     context = {
         "shotId": shot.shotId, "visualType": shot.visualType, "productVisible": shot.productVisible,
+        "characterExpected": not cutaway,
         "speech": shot.speech, "product": plan.product.productName if plan.product else "",
+        "productVisual": plan.product.visualDescription if plan.product else "",
         "continuityAnchors": shot.continuityAnchors, "candidateFrames": len(frames),
         "referenceFrames": len(references),
-        "referenceNote": "first reference = character identity source, then last frame of the previous shot" if references else "",
+        "referenceNote": ("after the candidate frames: " + ", ".join(
+            ([f"character identity source"] if reference_image else [])
+            + (["last frame of the previous shot"] if previous and previous.clipPath else [])
+            + (["product reference photo (the real product)"] if product_photo else []))) if references else "",
         "ruleChecks": {k: v.model_dump() for k, v in checks.items()},
     }
     try:
@@ -140,10 +174,28 @@ async def _qc_shot(ctx: PipelineContext, shot: Shot, previous: Shot | None) -> S
     return qc
 
 
-def _apply_repair(shot: Shot, qc: ShotQC) -> None:
+def _product_failed(qc: ShotQC) -> bool:
+    check = qc.checks.get("product")
+    return bool(check and check.status == "fail") or "product" in (qc.reason or "").lower()[:120]
+
+
+def _apply_repair(shot: Shot, qc: ShotQC, ctx: PipelineContext | None = None) -> None:
     """Repair Agent policy (PRD §15.2): fix the failing shot, never redo the whole video."""
     action = qc.repairAction or "retry_same_prompt"
     shot.repairHistory.append(f"attempt {shot.attempts}: {action} ({qc.reason[:80]})")
+    product = ctx.plan.product if ctx else None
+    if ctx and product and shot.productVisible and _product_failed(qc):
+        # The generator never saw the product: restate what it looks like; on a second product
+        # failure make the shot a close-up cutaway that starts on the real product photo.
+        visual = product.visualDescription or product.productName
+        if shot.attempts >= 2 and _cutaway_frame(ctx) is not None and ctx.settings.product_cutaway:
+            shot.visualType = "product_close_up"
+            shot.prompt = template_prompt(shot, ctx.plan.character, product.productName, visual, cutaway=True)
+            shot.repairHistory.append(f"attempt {shot.attempts}: product still wrong -> cutaway from the product photo")
+        elif not shot.prompt.startswith("PRODUCT:"):
+            shot.prompt = f"PRODUCT: {visual}. The product must look exactly like this, no other object. " + shot.prompt
+        shot.status = "planned"
+        return
     if shot.attempts >= 2 and action == "retry_same_prompt":
         action = "simplify_action"           # second failure: simplify instead of retrying blindly
     if action in ("simplify_action", "downgrade_visual_action"):
@@ -203,7 +255,7 @@ class VideoStage(Stage):
             if not failed or round_index == settings.maxVideoRepairs:
                 break
             for shot in failed:
-                _apply_repair(shot, shot.qc or ShotQC())
+                _apply_repair(shot, shot.qc or ShotQC(), ctx)
             pending = failed
         hard = [s.shotId for s in plan.shotPlan if s.qc and s.qc.status == "hard_fail" and s.status != "passed"]
         soft = [s.shotId for s in plan.shotPlan if s.qc and s.qc.status == "soft_fail" and s.status != "passed"]

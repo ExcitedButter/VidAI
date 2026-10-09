@@ -235,7 +235,9 @@ class ProductParserStage(Stage):
             plan.warnings.append("Very little product data on the page; product intelligence is low confidence.")
 
         payload = {"url": plan.productUrl, "scraped": {k: v for k, v in scraped.items() if k != "localImages"}}
-        product = await call_module(ctx, "product_parser", payload, model=ProductIntelligence)
+        photos = [p for p in ([plan.userOverrides.get("productImage")] + list(scraped.get("localImages", []))) if p and Path(p).is_file()][:2]
+        product = await call_module(ctx, "product_parser", payload, model=ProductIntelligence,
+                                    image_paths=photos or None)
         product.sourceUrl = plan.productUrl
         product.visualAssets = list(scraped.get("localImages", []))
         if plan.userOverrides.get("productImage"):
@@ -247,6 +249,8 @@ class ProductParserStage(Stage):
             product.brandName = scraped.get("brand") or ""
         if product.price is None and scraped.get("price"):
             product.price = str(scraped["price"])
+        if not product.visualDescription.strip():
+            product.visualDescription = f"{product.category or 'the product'} — {product.productName}".strip(" —")
         if product.confidence < 0.4:
             plan.warnings.append(
                 f"Low-confidence product intelligence ({product.confidence:.2f}): "

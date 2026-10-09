@@ -123,6 +123,8 @@ class MockProvider:
             "brandTone": ["practical", "upbeat"],
             "positioning": scraped.get("description") or "",
             "constraints": ["no health claims"], "riskFlags": [],
+            "visualDescription": "a compact matte-black electric gooseneck kettle with a wooden handle and lid knob, "
+                                 "sitting on a round black base with a small display and dial; about two hands tall",
             "confidence": 0.85 if bullets else 0.45,
             "sourceNotes": list(scraped.get("notes", [])), "multipleProductsOnPage": False,
         }
