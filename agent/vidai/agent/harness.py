@@ -23,6 +23,7 @@ from vidai.agent.stages.script import BeatPlannerStage, CopywriterStage, ScriptQ
 from vidai.agent.stages.shots import ShotPlannerStage
 from vidai.agent.stages.strategy import AngleStage, AudienceStage, ScriptRouterStage
 from vidai.agent.stages.video import AssemblerStage, VideoStage
+from vidai.agent.seedance import check_video_config
 from vidai.plan import CreativePlan, SpeechVisualBeat, StageEvent, Status, utc_now_iso
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ class CreativePipeline:
         if start_group not in GROUPS:
             raise ValueError(f"unknown group {start_group!r}; groups: {GROUPS}")
         ctx, plan = self.ctx, self.ctx.plan
+        self._preflight(start_group, stop_after)
         ctx.ensure_dirs()
         plan.error = None
         ctx.trace("pipeline_start", start_group=start_group, version=plan.version, mode=plan.mode)
@@ -83,6 +85,24 @@ class CreativePipeline:
             ctx.trace("pipeline_failed", error=plan.error)
             ctx.checkpoint("failed")
         return plan
+
+    def _preflight(self, start_group: str, stop_after: Optional[str]) -> None:
+        """Fail on configuration this run cannot recover from, before spending anything on it.
+
+        A missing video key used to surface as `Illegal header value b'Bearer '` from the first
+        clip request — after every LLM stage had already been paid for — and the generic
+        `except Exception` in the shot loop then backed off and retried it twice.
+        """
+        groups = GROUPS[GROUPS.index(start_group):]
+        if stop_after in groups:
+            groups = groups[: groups.index(stop_after) + 1]
+        if "video" not in groups:
+            return
+        settings = self.ctx.settings
+        reason = check_video_config(base_url=settings.seedance_base_url, api_key=settings.ark_api_key,
+                                    backend=settings.video_backend, mock=settings.mock)
+        if reason:
+            raise SystemExit(reason)
 
     def _should_pause(self, group: str) -> bool:
         plan = self.ctx.plan

@@ -305,4 +305,6 @@ def test_save_generated_character_to_personal_library(tmp_path: Path, fixture_pa
     personal = settings.data_dir / "personal_library.json"
     assert personal.is_file()
     library = load_library(None, personal)
-    assert any(c.characterId == plan.character.characterId for c in library) and len(library) == 7
+    assert any(c.characterId == plan.character.characterId for c in library)
+    # the personal library adds exactly one to the curated set, whatever its size
+    assert len(library) == len(load_library(None)) + 1

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -11,6 +12,21 @@ from vidai.plan import GenerationSettings
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 ARK_DEFAULT_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
+
+
+def _dotenv_value(raw: str) -> str:
+    """One .env value: quoted content verbatim, otherwise up to an inline ` #` comment.
+
+    `.env.example` documents its defaults with trailing comments
+    (`VIDAI_DURATION=15            # 15 | 30`), so a loader that keeps them turns
+    `cp .env.example .env` into a crash in the first int()/float() that reads one.
+    """
+    value = raw.strip()
+    if value[:1] in ("'", '"'):
+        quote, rest = value[0], value[1:]
+        end = rest.find(quote)
+        return rest[:end] if end != -1 else rest
+    return re.split(r"\s+#", value, maxsplit=1)[0].strip()
 
 
 def load_dotenv(path: Path | None = None) -> None:
@@ -22,8 +38,8 @@ def load_dotenv(path: Path | None = None) -> None:
         line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
-        key, _, value = line.partition("=")
-        key, value = key.strip(), value.strip().strip("'\"")
+        key, _, raw_value = line.partition("=")
+        key, value = key.strip(), _dotenv_value(raw_value)
         if key and key not in os.environ and value:
             os.environ[key] = value
 

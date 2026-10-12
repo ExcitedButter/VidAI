@@ -1,5 +1,8 @@
 __pycache__/
 *.pyc
 .env
-data/
+# Run artifacts. Anchored with a leading slash so it matches agent/data/ only:
+# a bare "data/" also matched vidai/data/, which holds the curated character
+# library, and silently kept it out of the repository.
+/data/
 .pytest_cache/
