@@ -71,13 +71,23 @@ class SeedanceClient:
         self.mock = mock
         self.poll_interval_s = poll_interval_s
         self.timeout_s = timeout_s
+        # Built before the pipeline starts, so an empty key must not raise here: a run that
+        # stops before video (--stop-at script) never needs it. Without a key there is no
+        # client; the first request raises SeedanceNonRetryable instead of httpx's
+        # "Illegal header value b'Bearer '", which the shot loop would back off and retry.
         self._client: httpx.AsyncClient | None = None
-        if not mock:
+        if not mock and api_key.strip():
             self._client = httpx.AsyncClient(
                 base_url=base_url.rstrip("/"),
                 headers={"Authorization": f"Bearer {api_key}"},
                 timeout=120.0,
             )
+
+    def _require_client(self) -> None:
+        """Hosted request path; mock returns before reaching it, so None means no API key."""
+        if self._client is None:
+            raise SeedanceNonRetryable(
+                "No video API key configured (ARK_API_KEY); retrying cannot help.")
 
     async def generate_to_file(
         self,
@@ -95,7 +105,7 @@ class SeedanceClient:
         if self.mock:
             return self._mock_generate(prompt, out_path, duration_s, ratio, generate_audio)
 
-        assert self._client is not None
+        self._require_client()
         text = (
             f"{prompt} --resolution {resolution} --duration {duration_s} "
             f"--ratio {ratio} --watermark {'true' if watermark else 'false'}"
@@ -127,7 +137,7 @@ class SeedanceClient:
         )
 
     async def _poll(self, task_id: str) -> str:
-        assert self._client is not None
+        self._require_client()
         deadline = asyncio.get_event_loop().time() + self.timeout_s
         while True:
             try:
@@ -222,7 +232,7 @@ class SeevioClient(SeedanceClient):
         if self.mock:
             return self._mock_generate(prompt, out_path, duration_s, ratio, generate_audio)
 
-        assert self._client is not None
+        self._require_client()
         payload_input: dict[str, Any] = {
             "prompt": prompt,
             "generation_type": "text-to-video",
@@ -259,7 +269,7 @@ class SeevioClient(SeedanceClient):
         )
 
     async def _poll_seevio(self, task_id: str) -> str:
-        assert self._client is not None
+        self._require_client()
         deadline = asyncio.get_event_loop().time() + self.timeout_s
         while True:
             try:
@@ -305,6 +315,26 @@ class SeevioClient(SeedanceClient):
         return direct
 
 
+def uses_local_backend(base_url: str, backend: str) -> bool:
+    """The local open-weights worker needs no API key; every hosted backend does."""
+    return backend == "local" or (backend == "auto" and ("127.0.0.1" in base_url or "localhost" in base_url))
+
+
+def check_video_config(*, base_url: str, api_key: str, backend: str, mock: bool = False) -> str:
+    """Return a one-line reason the video backend cannot run, or "" when it is usable.
+
+    Called before the first clip so a missing key fails with this sentence instead of
+    httpx's `Illegal header value b'Bearer '` after the whole LLM pipeline has been paid for.
+    """
+    if mock or uses_local_backend(base_url, backend):
+        return ""
+    if not api_key.strip():
+        return ("No video API key configured: set ARK_API_KEY in agent/.env (seevio.ai key for "
+                "VIDAI_SEEDANCE_BASE_URL=https://api.seevio.ai, or a Volcano Ark / BytePlus key). "
+                "Use --mock for an offline dry run, or --stop-at script to stop before video.")
+    return ""
+
+
 def build_video_client(
     *, base_url: str, api_key: str, model: str, mock: bool = False, backend: str = "auto",
     first_frame_strength: float = 1.0,
@@ -312,7 +342,7 @@ def build_video_client(
     """Pick the client: mock, the local open-weights worker (LTX-2.5), seevio, or Ark."""
     if mock:
         return SeedanceClient(base_url=base_url, api_key=api_key, model=model, mock=True)
-    if backend == "local" or (backend == "auto" and ("127.0.0.1" in base_url or "localhost" in base_url)):
+    if uses_local_backend(base_url, backend):
         from vidai.agent.video_local import LocalVideoClient
 
         return LocalVideoClient(base_url=base_url, model=model, first_frame_strength=first_frame_strength)
